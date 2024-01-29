@@ -2,12 +2,12 @@
 
 An OpenFrameworks addon integrating [libBlend2D](https://blend2d.com/), a blazing fast CPU 2D vector graphics renderer powered by a [JIT compiler](https://en.wikipedia.org/wiki/Just-in-time_compilation).
 
-Features:
+Features:  
 - Library loaded as an embedded library with access to C++ types.
 - A wrapper (`ofxBlend2DThreadedRenderer`) to use for asynchronous multithreaded rendering, keeping the framerate of your openFrameworks pipeline.
 - Can also be used in the main thread, at risk of reducing your `ofApp` framerate (blocking API).
 
-Technically :
+Technically :  
 	- Draw commands are submitted by the main thread (a dedicated thread is also possible).
 	- Then the pipeline is flushed using multiple threads.
 	- When the threads are done rendering, the resulting pixels are loaded into an `ofTexture` (from within the GL thread).
