@@ -72,8 +72,7 @@ bool ofxBlend2DThreadedRenderer::begin(){
     isSubmittingDrawCmds = true;
 
     // Init context
-    ctx.setRenderingQuality(BLRenderingQuality::BL_RENDERING_QUALITY_ANTIALIAS);
-
+    ctx.setRenderingQuality(bRenderHD ? BLRenderingQuality::BL_RENDERING_QUALITY_MAX_VALUE : BLRenderingQuality::BL_RENDERING_QUALITY_ANTIALIAS); // No effect as on jan 2024, will auto-enable ? (both consts are equal)
     // Todo: make this optional ?
     ctx.clearAll();
     ctx.fillAll(BLRgba32(255,255,255,0));
@@ -105,8 +104,10 @@ void ofxBlend2DThreadedRenderer::update(){
             newFrame = true;
         }
         if(newFrame){
+#ifdef ofxBlend2D_ENABLE_OFXFPS
             // Start timer
             fpsCounter.begin();
+#endif
 
             // Blocks ! Wait for render queue to finish
             // Note: should be flushed already; just calling in case...
@@ -122,13 +123,16 @@ void ofxBlend2DThreadedRenderer::update(){
             isDirty = false;
             renderedFrames++;
 
-            // Update timer
+#ifdef ofxBlend2D_ENABLE_OFXFPS
+            // Update timer. Todo: update also when no new frames & gui not visible ?
             fpsCounter.end();
             for(int i=0; i<ofxBlend2D_FPS_HISTORY_SIZE-1; ++i){
                 fpsCounterHist[i]=fpsCounterHist[i+1];
             }
 
             fpsCounterHist[ofxBlend2D_FPS_HISTORY_SIZE-1] = fpsCounter.getFps();
+#endif
+
 #ifdef ofxBlend2D_DEBUG
             std::cout << "Update() -> Received a new frame !" << " dirty=" << isDirty << std::endl;
 #endif
@@ -201,6 +205,7 @@ ofTexture& ofxBlend2DThreadedRenderer::getTexture(){
     return tex;
 }
 
+#ifdef ofxBlend2D_ENABLE_OFXFPS
 float ofxBlend2DThreadedRenderer::getFps() {
     return fpsCounter.getFps();
 }
@@ -216,7 +221,7 @@ float ofxBlend2DThreadedRenderer::getSyncTime() {
 unsigned int ofxBlend2DThreadedRenderer::getRenderedFrames() const {
     return renderedFrames;
 }
-
+#endif
 
 void ofxBlend2DThreadedRenderer::threadedFunction(){
 
@@ -257,3 +262,52 @@ void ofxBlend2DThreadedRenderer::threadedFunction(){
 #endif
 	}
 }
+
+#ifdef ofxBlend2D_ENABLE_IMGUI
+void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
+    ImGui::PushID("Blend2DSettings");
+    ImGui::SeparatorText("Blend2D");
+
+    bool reAllocate = false;
+
+    static unsigned int pixelSteps[2] = {1, 10}; // Slow + Fast steps
+    if(ImGui::InputScalar("Width", ImGuiDataType_U32, &width, (void*)&pixelSteps[0], (void*)&pixelSteps[1], "%u px", ImGuiInputTextFlags_EnterReturnsTrue)){
+        reAllocate=true;
+    }
+    if(ImGui::InputScalar("Height", ImGuiDataType_U32, &height, (void*)&pixelSteps[0], (void*)&pixelSteps[1], "%u px", ImGuiInputTextFlags_EnterReturnsTrue)){
+        reAllocate=true;
+    }
+    if(reAllocate){
+        allocate(width, height);
+    }
+
+    if(getTexture().isAllocated())
+        ImGui::Text("Resolution: %.0f x %.0f", getTexture().getWidth(), getTexture().getHeight());
+    else {
+        ImGui::Text("Resolution: [Not allocated!]");
+    }
+    ImGui::Checkbox("High quality rendering", &bRenderHD);
+    static unsigned int numThreads[4] = { 0, 1, 0, 12 }; // cur, speed, min, max
+    numThreads[0] = createInfo.threadCount;
+    if(ImGui::DragScalar("NumThreads", ImGuiDataType_U32, (void*)&numThreads[0], numThreads[1], &numThreads[2], &numThreads[3], "%u" )){
+        createInfo.threadCount = numThreads[0];
+    }
+
+#ifdef ofxBlend2D_ENABLE_OFXFPS
+    float averageFps = 0, minFps = 100, maxFps = 0;
+    for(int i = 0; i<ofxBlend2D_FPS_HISTORY_SIZE; ++i){
+        const float& f = (&getFpsHist())[i];
+        averageFps += f;
+        minFps = glm::min(minFps, f);
+        maxFps = glm::max(maxFps, f);
+    }
+    averageFps /= ofxBlend2D_FPS_HISTORY_SIZE;
+    ImGui::Text("FPS: %.0f (avg: %.1f, min:%.1f, max:%.1f)", getFps(), averageFps, minFps, maxFps );
+    ImGui::Text("Frames rendered: %u", getRenderedFrames());
+    ImGui::Text("Timeframe: %.3f sec", getSyncTime() );
+    ImGui::PlotHistogram("##blend2d_fps_histogram", &getFpsHist(), ofxBlend2D_FPS_HISTORY_SIZE, 0, NULL, 0.f, 75.f, ImVec2(0,30));
+#endif // end ofxBlend2D_ENABLE_OFXFPS
+
+    ImGui::PopID();
+}
+#endif // end ofxBlend2D_ENABLE_IMGUI
