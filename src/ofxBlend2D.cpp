@@ -6,7 +6,7 @@
 #include "ofImage.h"
 
 ofxBlend2DThreadedRenderer::ofxBlend2DThreadedRenderer(){
-    createInfo.threadCount = 6; // Number of threads
+    createInfo.threadCount = 4; // Number of threads
     //createInfo.flags =
 
     codec.findByName("BMP"); // Sets codec to BMP

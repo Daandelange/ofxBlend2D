@@ -2,7 +2,8 @@
 
 #include "blend2d.h"
 #include "ofTexture.h"
-#include "ofxFps.h"
+#include "ofFileUtils.h" // ofBuffer
+#include "ofColor.h"
 
 // Threads & locks
 #include "ofThread.h"
@@ -29,7 +30,11 @@
 //#define ofxBlend2D_DEBUG
 
 #ifdef ofxBlend2D_ENABLE_IMGUI
-#include "imgui.h"
+#   include "imgui.h"
+#endif
+
+#ifdef ofxBlend2D_ENABLE_OFXFPS
+#   include "ofxFps.h"
 #endif
 
 // OF Glue
