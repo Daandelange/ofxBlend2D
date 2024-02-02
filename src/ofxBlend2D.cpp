@@ -268,6 +268,18 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
     ImGui::PushID("Blend2DSettings");
     ImGui::SeparatorText("Blend2D");
 
+#ifdef DEBUG
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(1,0,0,1), "  /!\\ ");
+    if(ImGui::IsItemHovered()){
+        if(ImGui::BeginTooltip()){
+            ImGui::Text("Compiled in debug mode.");
+            ImGui::Text("(bad performance)");
+            ImGui::EndTooltip();
+        }
+    }
+#endif
+
     bool reAllocate = false;
 
     static unsigned int pixelSteps[2] = {1, 10}; // Slow + Fast steps

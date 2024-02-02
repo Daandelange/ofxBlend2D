@@ -73,7 +73,7 @@ void ofApp::draw(){
         ctx.strokeRoundRect(rect2, BLRgba32(0xFF000000));
 
         // - - - - - -
-        // BL path construction is quite similar to ofPath
+        // BL path construction is quite similar to ofPath, but without the rendering styles
         BLPath line;
         line.moveTo(p1.x, p1.y);
         line.cubicTo(h1.x, h1.y, h2.x, h2.y, p2.x, p2.y);
