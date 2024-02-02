@@ -20,7 +20,10 @@ common:
 	ADDON_SOURCES_EXCLUDE += libs/blend2d/build
 
 	# See : https://blend2d.com/doc/build-instructions.html#BuildingWithoutCMake
-	ADDON_CPPFLAGS = NDEBUG BL_BUILD_OPT_SSE2
+	# ADDON_DEFINES seems to be ignored by make ... using CFLAGS too
+	ADDON_DEFINES = NDEBUG
+	ADDON_DEFINES += BL_BUILD_OPT_SSE2
+	ADDON_CPPFLAGS = -DNDEBUG -DBL_BUILD_OPT_SSE2
 
 osx:
 
