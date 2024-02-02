@@ -5,6 +5,7 @@
 #include "ofTexture.h"
 #include "ofFileUtils.h" // ofBuffer
 #include "ofColor.h"
+#include "ofPath.h"
 
 // Threads & locks
 #include "ofThread.h"
