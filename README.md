@@ -20,18 +20,29 @@ Should work on Linux and Windows too.
 # Installation
 - Warning! libBlend2D doesn't compile with **Clang 3.8 and below** (until Xcode 8.x).  
   If so, update your Command Line Toolkit to at least Xcode 9 and configure it with `xcode-select -s`.
-- Clone recursively (to get the submodules).
-- Install dependencies: [ofxFPS](https://github.com/tobiasebsen/ofxFps).
+- Clone **recursively** (to get the submodules).
+- Install **optional** dependencies:  
+  - [ofxFPS](https://github.com/tobiasebsen/ofxFps) to embed an FPS counter for the renderer.
+  - [ofxImGui/develop](https://github.com/jvcleave/ofxImGui/tree/develop) to provide GUI helper widgets.
+- Install `example-svg` dependencies: (*`example-simple` doesn't need any*)  
+  - The optional dependencies (*above*)
+  - [ofxSvgLoader](https://github.com/NickHardeman/ofxSvgLoader)
+
 
 # Usage
 I recommend reading trough the [Blend2D guide](https://blend2d.com/doc/getting-started.html) to get started using their graphics API.
 
+Some OpenFrameworks / Blend2D glue utilities are being written, any contribution is welcome to facilitate interaction with OF objects.
+
+# Examples
+- `example-simple` : A bare-bones example of how to use the C++ Blend2D API, pretty similar to the Blend2D "getting started" examples.
+- `example-svg` : Loads an SVG to provide some `ofPath` which are converted to `BLPath` for rendering in Blend2D.
+
 # Future ideas
 - Implement as ofRenderer subclass (would need porting all `ofDraw...` functions to ofxBlend2D, but provide an easier integration with OF).
-- Provide instructions for building libBlend2D as a library.
-- Offline rendering to files.
+- Provide instructions for building libBlend2D as a library (*to prevent recompiling for every single project*).
+- Offline rendering outputting to files.
 
 # License
 libBlend2D is [zLib](https://github.com/blend2d/blend2d/blob/master/LICENSE.md), by [Petr Kobalicek](https://kobalicek.com).  
 ofxBlend2D is [MIT](https://github.com/daandelange/ofxBlend2D/blob/master/LICENSE.md), by [Daan de Lange](https://daandelange.com/).  
-ofxFPS is [Apache](https://github.com/tobiasebsen/ofxFps/blob/master/LICENSE), by [Tobias Ebsen](https://github.com/tobiasebsen).
