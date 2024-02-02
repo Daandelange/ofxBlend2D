@@ -35,7 +35,8 @@ common:
 	ADDON_CPPFLAGS = -DNDEBUG -DBL_BUILD_OPT_SSE2
 
 osx:
-
+	# Fixes weird curl ldap linker issue
+	ADDON_FRAMEWORKS = LDAP
 
 linux64:
 
