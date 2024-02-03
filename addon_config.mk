@@ -6,7 +6,10 @@ meta:
 	ADDON_URL = https://github.com/daandelange/ofxBlend2D
 
 common:
-	ADDON_DEPENDENCIES = "ofxFps"
+	#ADDON_DEPENDENCIES = ofxFps
+
+    # Recomended optimisation by Blend2D
+    ADDON_CFLAGS = -O2 -fno-semantic-interposition -ftree-vectorize
 
 	# Manually add includes
 	ADDON_INCLUDES = src/
@@ -30,16 +33,35 @@ common:
 
 	# See : https://blend2d.com/doc/build-instructions.html#BuildingWithoutCMake
 	ADDON_DEFINES = NDEBUG
-	ADDON_DEFINES += BL_BUILD_OPT_SSE2
+    ADDON_DEFINES += ASMJIT_STATIC
 	# ADDON_DEFINES seems to be ignored by make ... using CFLAGS too
-	ADDON_CPPFLAGS = -DNDEBUG -DBL_BUILD_OPT_SSE2
+	ADDON_CFLAGS += -DNDEBUG 
+    ADDON_CFLAGS += -DASMJIT_STATIC
+
+    # Extra feature you can enable depending on your hardware
+
+    # SSE2
+    ADDON_DEFINES += BL_BUILD_OPT_SSE2
+    ADDON_CFLAGS += -DBL_BUILD_OPT_SSE2
+    ADDON_CFLAGS += -msse
+    #ADDON_CFLAGS += -msse
+
+    # SSE4.2
+    # Note = Doesn't compile on linux without these
+    ADDON_DEFINES += BL_BUILD_OPT_SSE4_2
+    ADDON_CFLAGS += -DBL_BUILD_OPT_SSE4_2
+    ADDON_CFLAGS += -msse4.2
+
+    # Linux clang / llvm
+    
 
 osx:
 	# Fixes weird curl ldap linker issue
 	ADDON_FRAMEWORKS = LDAP
 
 linux64:
-
+    #ADDON_PKG_CONFIG_LIBRARIES = libc libm libpthread librt
+    ADDON_LDFLAGS = -lrt
 
 linuxarmv7l:
 
