@@ -34,12 +34,34 @@ void ofxBlend2DThreadedRenderer::stopBlThread(){
 
 // todo: destructor --> blImageCodecDestroy(&codec); ???
 
-void ofxBlend2DThreadedRenderer::allocate(int _width, int _height){
+void ofxBlend2DThreadedRenderer::allocate(int _width, int _height, int glPixelType){
     // todo: wait for thread first ?
 
     width = _width;
     height = _height;
-    tex.allocate(_width, _height, GL_RGBA);
+    tex.allocate(_width, _height, glPixelType);
+    switch(glPixelType){
+        case GL_RGBA:
+            numChannels = 4;
+            blInternalFormat = BLFormat::BL_FORMAT_PRGB32;
+            break;
+//        case GL_RGB:
+//            numChannels = 3;
+//            break;
+//        case GL_LUMINANCE_ALPHA:
+//            numChannels = 2;
+//            break;
+        case GL_LUMINANCE:
+            numChannels = 1;
+            blInternalFormat = BLFormat::BL_FORMAT_A8;
+            break;
+        default:
+            numChannels = 0;
+            ofLogError("ofxBlend2DThreadedRenderer::allocate") << "Unsupported pixel type : " << glPixelType;
+    }
+    if(numChannels>0){
+        glInternalFormatTexture = glPixelType;
+    }
 }
 
 bool ofxBlend2DThreadedRenderer::begin(){
@@ -54,7 +76,7 @@ bool ofxBlend2DThreadedRenderer::begin(){
     }
 
     // Init output image canvas
-    img = BLImage(width, height, BL_FORMAT_PRGB32);
+    img = BLImage(width, height, blInternalFormat);
 
     // Create context for this image
     BLResult result = ctx.begin(img, createInfo);
@@ -72,7 +94,7 @@ bool ofxBlend2DThreadedRenderer::begin(){
     isSubmittingDrawCmds = true;
 
     // Init context
-    ctx.setRenderingQuality(bRenderHD ? BLRenderingQuality::BL_RENDERING_QUALITY_MAX_VALUE : BLRenderingQuality::BL_RENDERING_QUALITY_ANTIALIAS); // No effect as on jan 2024, will auto-enable ? (both consts are equal)
+    ctx.setRenderingQuality(bRenderHD ? BLRenderingQuality::BL_RENDERING_QUALITY_ANTIALIAS : BLRenderingQuality::BL_RENDERING_QUALITY_ANTIALIAS); // No effect as on jan 2024, will auto-enable ? (both consts are equal)
     // Todo: make this optional ?
     ctx.clearAll();
     ctx.fillAll(BLRgba32(255,255,255,0));
@@ -99,7 +121,7 @@ void ofxBlend2DThreadedRenderer::update(){
     if(isDirty){
 
         bool newFrame = false;
-        static ofBuffer bufFromThread;
+        static BLArray<uint8_t> bufFromThread;
         while(pixelDataFromThread.tryReceive(bufFromThread, 1)){ // Empty queue until most recent image to grab
             newFrame = true;
         }
@@ -114,8 +136,9 @@ void ofxBlend2DThreadedRenderer::update(){
             ctx.flush(BLContextFlushFlags::BL_CONTEXT_FLUSH_SYNC);
 
             // Grab the result
-            //tex.allocate(width, height, GL_RGBA); // not needed, ofLoadImage seems to do it for us. ??
-            ofLoadImage(tex, bufFromThread);
+            if(!loadBmpStreamIntoTexture((bufFromThread.data()), bufFromThread.size())){
+                ofLogWarning("ofxBlend2D") << "Could not load data from pixels !" << std::endl;
+            }
 
             // Close & release context
             ctx.end();
@@ -226,7 +249,7 @@ unsigned int ofxBlend2DThreadedRenderer::getRenderedFrames() const {
 void ofxBlend2DThreadedRenderer::threadedFunction(){
 
     bool newFrame = false;
-    ofBuffer pixelDataInThread;
+    BLArray<uint8_t> pixelDataInThread;
 
     while(flushFrameSignal.receive(newFrame)){
 #ifdef ofxBlend2D_DEBUG
@@ -251,16 +274,147 @@ void ofxBlend2DThreadedRenderer::threadedFunction(){
             // TODO : handle error in thread ?
         }
         else {
-            pixelDataInThread = ofBuffer((char*)const_cast<unsigned char*>(resultData.data()), resultData.size());
-        }
-
-
 #if __cplusplus>=201103
-		pixelDataFromThread.send(std::move(pixelDataInThread));
+			pixelDataFromThread.send(std::move(resultData));
 #else
-		pixelDataFromThread.send(pixelDataInThread);
+			pixelDataFromThread.send(resultData);
 #endif
+        }
 	}
+}
+
+#ifdef ofxBlend2D_BMP_PARSER_INTERNAL
+#pragma pack(push, 1)
+struct BMPFileHeader {
+    //char signature[2]; // Should be "BM"
+    uint16_t signature{ 0x4D42 };          // File type always "BM" which is 0x4D42 (stored as hex uint16_t in little endian)
+    uint32_t fileSize{ 0 };                // Size of the file (in bytes)
+    uint16_t reserved1{ 0 };               // Reserved, always 0
+    uint16_t reserved2{ 0 };               // Reserved, always 0
+    uint32_t dataOffset{ 0 };              // Start position of pixel data (bytes from the beginning of the file)
+};
+
+struct BMPInfoHeader {
+    uint32_t headerSize{ 0 };               // Size of this header (in bytes)
+    int32_t width{ 0 };                     // width of bitmap in pixels
+    int32_t height{ 0 };                    // width of bitmap in pixels
+                                            //       (if positive, bottom-up, with origin in lower left corner)
+                                            //       (if negative, top-down, with origin in upper left corner)
+    uint16_t planes{ 1 };                   // # of planes (always 1)
+    uint16_t bitCount{ 0 };                 // # of bits per pixel (8 B - 16 BA - 24 RGB - 32 RGBA)
+    uint32_t compression{ 0 };              // 0 (compressed) or 3 (uncompressed)
+    uint32_t imageSize{ 0 };                // 0 - for uncompressed images
+    int32_t xPixelsPerMeter{ 0 };
+    int32_t yPixelsPerMeter{ 0 };
+    uint32_t colorsUsed{ 0 };               // # color indexes in the color table. Use 0 for the max number of colors allowed by bit_count (full color)
+    uint32_t importantColors{ 0 };          // # of colors used for displaying the bitmap. If 0 all colors are important
+};
+
+struct BMPColorHeader {
+    uint32_t redMask{ 0x00ff0000 };         // Bit mask for the red channel
+    uint32_t greenMask{ 0x0000ff00 };       // Bit mask for the green channel
+    uint32_t blueMask{ 0x000000ff };        // Bit mask for the blue channel
+    uint32_t alphaMask{ 0xff000000 };       // Bit mask for the alpha channel
+    uint32_t colorSpace{ 0x73524742 }; // Default "sRGB" (0x73524742)
+    uint32_t unused[16]{ 0 };               // Unused data for sRGB color space to fill the structure to 64 bytes
+};
+#pragma pack(pop)
+#endif
+
+// Parsing BMP buffer into the texture
+bool ofxBlend2DThreadedRenderer::loadBmpStreamIntoTexture(const uint8_t* data, std::size_t size){
+#ifdef ofxBlend2D_BMP_PARSER_INTERNAL
+    // Load with INTERNAL loader
+
+    // Ensure data is large enough to contain BMP file and image headers
+    if(size < sizeof(BMPFileHeader) + sizeof(BMPInfoHeader) + sizeof(BMPColorHeader)) {
+        ofLogWarning("ofxBlend2D::loadBmpStreamIntoTexture") << "The header is missing!";
+        return false;
+    }
+
+    BMPColorHeader colorHeader;
+
+    // Parse BMP headers
+    const BMPFileHeader* fileHeader = reinterpret_cast<const BMPFileHeader*>(data);
+
+    // Check BMP signature
+    if(fileHeader->signature != 0x4D42) {
+        ofLogWarning("ofxBlend2D::loadBmpStreamIntoTexture") << "Invalid BMP buffer !";
+        return false;
+    }
+
+    // Parse 2nd header
+    const BMPInfoHeader* infoHeader = reinterpret_cast<const BMPInfoHeader*>(data + sizeof(BMPFileHeader));
+
+    // Check compression
+    if(infoHeader->compression!=0){
+        //const BMPColorHeader* colorHeader = reinterpret_cast<const BMPColorHeader*>(data + dataOffset);
+        ofLogWarning("ofxBlend2D::loadBmpStreamIntoTexture") << "The buffer is compressed BMP, I don't talk compression !";
+        return false;
+    }
+
+    // Extract information from BMP Info Header
+    unsigned int dataOffset = fileHeader->dataOffset;
+    int width = infoHeader->width;
+    int height = infoHeader->height;
+    unsigned short bitCount = infoHeader->bitCount;
+
+    // Calculate image size and data length
+    unsigned int imageSize = (size - dataOffset);
+    unsigned int dataLength = imageSize; // Adjust as needed based on image format
+
+//    std::cout << "Image Dimensions: " << width << " x " << height << std::endl;
+//    std::cout << "Pixel Format: " << bitCount << " bits per pixel /" << sizeof(uint8_t) << "=" << infoHeader->bitCount/sizeof(uint8_t) << std::endl;
+//    std::cout << "Data Offset: " << dataOffset << std::endl;
+//    std::cout << "Data Length: " << dataLength << std::endl;
+
+    // Set the data pointer to the beginning of the pixel data
+    const uint8_t* pixelData = data + dataOffset;
+
+    // Get GL pixel type from bitCount
+    int glFormat = 0;
+    switch(infoHeader->bitCount) {
+        case 1:  // Monochrome
+            glFormat = GL_DEPTH_STENCIL;
+            break;
+        case 8: // Grayscale or indexed color
+            glFormat = GL_LUMINANCE_ALPHA;
+            break;
+        case 24: // RGB
+            glFormat = GL_RGB;
+            break;
+        case 32: // RGBA
+            glFormat = GL_RGBA;
+            break;
+
+        case 4: // Indexed color
+        case 16: // RGB565
+        default:
+            ofLogWarning("ofxBlend2D::loadBmpStreamIntoTexture") << "Unsupported pixel type / bitCount = " << infoHeader->bitCount;
+            return false;
+    }
+
+    if(
+        !tex.isAllocated() || // not allocated ?
+        tex.getTextureData().glInternalFormat != glFormat || // Different pixel format ?
+        tex.getTextureData().width != width || // different width ?
+        tex.getTextureData().height != height // different width ?
+    ){
+        tex.allocate(width, height, glFormat);
+    }
+
+    // Load the pixel data into the texture
+    tex.loadData(pixelData, width, height, glFormat);
+    tex.getTextureData().bFlipTexture = true; // Buffer sends image flipped...
+
+    return true;
+#elif defined(ofxBlend2D_BMP_PARSER_OF)
+    // Load with Openframeworks loader (which uses FreeImage)
+    ofBuffer buf(reinterpret_cast<const char*>(data), size);
+    return ofLoadImage(tex, buf);
+#else
+    return false;
+#endif
 }
 
 #ifdef ofxBlend2D_ENABLE_IMGUI
@@ -314,7 +468,7 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
         maxFps = glm::max(maxFps, f);
     }
     averageFps /= ofxBlend2D_FPS_HISTORY_SIZE;
-    ImGui::Text("FPS: %.0f (avg: %.1f, min:%.1f, max:%.1f)", getFps(), averageFps, minFps, maxFps );
+    ImGui::Text("FPS: %5.1f (avg: %5.1f, min:%3.0f, max:%3.0f)", getFps(), averageFps, minFps, maxFps );
     ImGui::Text("Frames rendered: %u", getRenderedFrames());
     ImGui::Text("Timeframe: %.3f sec", getSyncTime() );
     ImGui::PlotHistogram("##blend2d_fps_histogram", &getFpsHist(), ofxBlend2D_FPS_HISTORY_SIZE, 0, NULL, 0.f, 75.f, ImVec2(0,30));

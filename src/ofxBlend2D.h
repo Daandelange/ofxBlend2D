@@ -31,6 +31,14 @@
 // Uncomment to enable very verbose threading debug messages
 //#define ofxBlend2D_DEBUG
 
+// Set default BMP decrypter (default & recommended : ofxBlend2D_BMP_PARSER_INTERNAL)
+// Note : OF's freetype based BMP loader doesn't work with the headers sent by Blend2D in Linux+Windows.
+// On OSX it works fine but is quite slow, so ofxBlend2D_BMP_PARSER_INTERNAL is also recommended.
+//#define ofxBlend2D_BMP_PARSER_OF
+#if !defined(ofxBlend2D_BMP_PARSER_OF) && !defined(ofxBlend2D_BMP_PARSER_INTERNAL)
+#define ofxBlend2D_BMP_PARSER_INTERNAL
+#endif
+
 #ifdef ofxBlend2D_ENABLE_IMGUI
 #   include "imgui.h"
 #endif
@@ -47,7 +55,7 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         ~ofxBlend2DThreadedRenderer();
 
         // Sets the size
-        void allocate(int _width, int _height);
+        void allocate(int _width, int _height, int glPixelType=GL_RGBA);
 
         // Start submitting draw commands to context
         bool begin();
@@ -80,10 +88,14 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
 
         // todo: fps
     protected:
-        //bool syncTexture();
+        // Internal state
         int width = 0;
         int height = 0;
-        // Internal state
+        unsigned int numChannels = 0;
+        int glInternalFormatTexture = 0;
+        BLFormat blInternalFormat = BLFormat::BL_FORMAT_NONE;
+
+
         bool isDirty = false; // Note: also protects some threaded variables
         bool isSubmittingDrawCmds = false;
         unsigned int renderedFrames = 0;
@@ -106,7 +118,10 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
 
         // Threads
         void threadedFunction() override;
-        ofThreadChannel<ofBuffer> pixelDataFromThread;
+        ofThreadChannel<BLArray<uint8_t> > pixelDataFromThread;
         ofThreadChannel<bool> flushFrameSignal;
+
+        // BMP loading
+        bool loadBmpStreamIntoTexture(const uint8_t* data, std::size_t size);
 };
 
