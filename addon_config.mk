@@ -8,8 +8,9 @@ meta:
 common:
 	#ADDON_DEPENDENCIES = ofxFps
 
-    # Recomended optimisation by Blend2D
-    ADDON_CFLAGS = -O2 -fno-semantic-interposition -ftree-vectorize
+	# Recomended optimisation by Blend2D
+	ADDON_CFLAGS = -O2
+	#ADDON_CFLAGS = -fno-semantic-interposition -ftree-vectorize
 
 	# Manually add includes
 	ADDON_INCLUDES = src/
@@ -35,7 +36,7 @@ common:
 	ADDON_DEFINES = NDEBUG
     ADDON_DEFINES += ASMJIT_STATIC
 	# ADDON_DEFINES seems to be ignored by make ... using CFLAGS too
-	ADDON_CFLAGS += -DNDEBUG 
+	ADDON_CFLAGS += -DNDEBUG
     ADDON_CFLAGS += -DASMJIT_STATIC
 
     # Extra feature you can enable depending on your hardware
