@@ -37,30 +37,38 @@ void ofxBlend2DThreadedRenderer::stopBlThread(){
 void ofxBlend2DThreadedRenderer::allocate(int _width, int _height, int glPixelType){
     // todo: wait for thread first ?
 
+    // If default pixeltype, set it to the previous one.
+    // If no previous, set to default.
+    // This way you can change the pixels without remembering the initial format.
+    if(glPixelType==0){
+        glPixelType = glInternalFormatTexture==0?GL_RGB:glInternalFormatTexture;
+    }
+
     width = _width;
     height = _height;
     tex.allocate(_width, _height, glPixelType);
+
+    // Texture always allocates to the requested format
+    glInternalFormatTexture = glPixelType;
+
+    // Set Blend2D buffer equivalent
     switch(glPixelType){
         case GL_RGBA:
-            numChannels = 4;
             blInternalFormat = BLFormat::BL_FORMAT_PRGB32;
+            //glInternalFormatTexture = GL_BGRA;
             break;
-//        case GL_RGB:
-//            numChannels = 3;
-//            break;
-//        case GL_LUMINANCE_ALPHA:
-//            numChannels = 2;
-//            break;
+        case GL_RGB:
+            blInternalFormat = BLFormat::BL_FORMAT_XRGB32;
+            //glInternalFormatTexture = GL_BGR;
+            break;
         case GL_LUMINANCE:
-            numChannels = 1;
             blInternalFormat = BLFormat::BL_FORMAT_A8;
+            //glInternalFormatTexture = GL_LUMINANCE;
             break;
         default:
-            numChannels = 0;
-            ofLogError("ofxBlend2DThreadedRenderer::allocate") << "Unsupported pixel type : " << glPixelType;
-    }
-    if(numChannels>0){
-        glInternalFormatTexture = glPixelType;
+            // By default, set blend2d to full RGBA buffer
+            blInternalFormat = BLFormat::BL_FORMAT_PRGB32;
+            ofLogWarning("ofxBlend2DThreadedRenderer::allocate") << "Unsupported pixel type, using the default BMP32 with alpha.";
     }
 }
 
@@ -165,25 +173,6 @@ void ofxBlend2DThreadedRenderer::update(){
 #endif
     }
 }
-
-//bool ofxBlend2DThreadedRenderer::syncTexture(){
-//    assert(!isSubmittingDrawCmds);
-
-//    BLArray<uint8_t> resultData;
-//    BLResult resultWrite = img.writeToData(resultData, codec);
-
-//    if(resultWrite != BL_SUCCESS){
-//        // failed !
-//        ofLogWarning("ofxBlend2DThreadedRenderer::syncTexture()") << "Couldn't load texture! Error=" << resultWrite << " and " << getContextErrors();
-//        return false;
-//    }
-
-//    //ofTexture tex;
-//    ofBuffer b((char*)const_cast<unsigned char*>(resultData.data()), resultData.size());
-//    //tex.allocate(, GL_RGBA); // not needed, ofLoadImage seems to do it for us.
-//    ofLoadImage(tex, b);
-//    return true;
-//}
 
 BLContext& ofxBlend2DThreadedRenderer::getBlContext(){
     assert(isSubmittingDrawCmds); // Only accessible between begin() and end() calls !
@@ -315,10 +304,56 @@ struct BMPColorHeader {
     uint32_t greenMask{ 0x0000ff00 };       // Bit mask for the green channel
     uint32_t blueMask{ 0x000000ff };        // Bit mask for the blue channel
     uint32_t alphaMask{ 0xff000000 };       // Bit mask for the alpha channel
-    uint32_t colorSpace{ 0x73524742 }; // Default "sRGB" (0x73524742)
-    uint32_t unused[16]{ 0 };               // Unused data for sRGB color space to fill the structure to 64 bytes
+    uint32_t colorSpace{ 0x73524742 };      // Default 0x73524742 (=sRGB)
+    //uint32_t colorSpaceData[16]{ 0 };       // Colorspace data (unused for sRGB color space), to fill the structure up to 64 bytes
 };
 #pragma pack(pop)
+
+GLenum getOpenGLFormat(const BMPInfoHeader* infoHeader) {
+    // Get GL pixel type from bitCount
+    GLenum glFormat = 0;
+    switch(infoHeader->bitCount) {
+        case 1:  // Monochrome
+            glFormat = GL_DEPTH_STENCIL;
+            break;
+        case 8: // Grayscale or indexed color
+            glFormat = GL_LUMINANCE_ALPHA;
+            break;
+        case 24: // RGB
+            glFormat = GL_RGB;
+            break;
+        case 32: // RGBA
+            glFormat = GL_RGBA;
+            break;
+
+        case 4: // Indexed color
+        case 16: // RGB565
+        default:
+            ofLogWarning("ofxBlend2D::getOpenGLFormat") << "Unsupported pixel type / bitCount = " << infoHeader->bitCount;
+            return 0;
+    }
+    return 0;
+}
+
+GLenum getOpenGLFormat(const BMPColorHeader& colorHeader) {
+    // Getting mask R-g-b-a : 00ff0000-0000ff00-000000ff-ff000000 (indicates position of data)
+    if (colorHeader.redMask == 0x0000FF && colorHeader.greenMask == 0x00FF00 &&
+        colorHeader.blueMask == 0xFF0000 && colorHeader.alphaMask == 0x000000) {
+        return GL_RGBA;  // Standard RGBA ordering
+    } else if (colorHeader.redMask == 0x00FF0000 && colorHeader.greenMask == 0x0000FF00 &&
+               colorHeader.blueMask == 0x000000FF && colorHeader.alphaMask == 0xFF000000) {
+        return GL_BGRA;  // Standard BGRA ordering
+    } else if (colorHeader.redMask == 0x00FF0000 && colorHeader.greenMask == 0x0000FF00 &&
+               colorHeader.blueMask == 0x000000FF && colorHeader.alphaMask == 0x00000000) {
+        return GL_RGB;   // Standard RGB ordering
+    } else if (colorHeader.redMask == 0x000000FF && colorHeader.greenMask == 0x00000000 &&
+               colorHeader.blueMask == 0x00000000 && colorHeader.alphaMask == 0x00000000) {
+        return GL_LUMINANCE;  // Single channel (luminance/grayscale)
+    } else {
+        ofLogWarning("ofxBlend2D::getOpenGLFormat") << "Unsupported color mask : " << std::hex << colorHeader.redMask << "-" << colorHeader.greenMask << "-" << colorHeader.blueMask << "-" << colorHeader.alphaMask;
+        return GL_BGRA;
+    }
+}
 #endif
 
 // Parsing BMP buffer into the texture
@@ -327,12 +362,10 @@ bool ofxBlend2DThreadedRenderer::loadBmpStreamIntoTexture(const uint8_t* data, s
     // Load with INTERNAL loader
 
     // Ensure data is large enough to contain BMP file and image headers
-    if(size < sizeof(BMPFileHeader) + sizeof(BMPInfoHeader) + sizeof(BMPColorHeader)) {
+    if(size < sizeof(BMPFileHeader) + sizeof(BMPInfoHeader)) {
         ofLogWarning("ofxBlend2D::loadBmpStreamIntoTexture") << "The header is missing!";
         return false;
     }
-
-    BMPColorHeader colorHeader;
 
     // Parse BMP headers
     const BMPFileHeader* fileHeader = reinterpret_cast<const BMPFileHeader*>(data);
@@ -353,10 +386,39 @@ bool ofxBlend2DThreadedRenderer::loadBmpStreamIntoTexture(const uint8_t* data, s
         return false;
     }
 
+    // Guess pixel format from info header
+    GLenum glFormat = getOpenGLFormat(infoHeader);
+
+    // Grab Color header if present (only used in RGBA formats)
+    if(infoHeader->bitCount == 32 && infoHeader->headerSize > sizeof(BMPInfoHeader)){
+        if(
+            // Does the buffer go far enough ?
+            (size >= (sizeof(BMPFileHeader) + sizeof(BMPInfoHeader) + sizeof(BMPColorHeader))) &&
+            // Header size is extended after color header !
+            (infoHeader->headerSize >= ((sizeof(BMPInfoHeader) + sizeof(BMPColorHeader))))
+        ) {
+            const BMPColorHeader* colorHeader = reinterpret_cast<const BMPColorHeader*>(data + sizeof(BMPFileHeader) + sizeof(BMPInfoHeader));
+            // Is it sRGB ? Can't verify, blend2D sets it to 0x00000001 !
+            //if(colorHeader->colorSpace != 0x73524742){
+            //    ofLogWarning("ofxBlend2D::loadBmpStreamIntoTexture") << "Unknown color space ! = "<< std::hex << colorHeader->colorSpace;
+            //    // return here ? is this an error ?
+            //}
+            //else {
+            GLenum nf = getOpenGLFormat(*colorHeader);
+            if(nf!=0) glFormat = nf;
+            //}
+        }
+        else {
+            // Maybe this is no error ?
+            ofLogWarning("ofxBlend2D::loadBmpStreamIntoTexture") << "Corrupted color header ! size=" << size << " -  encoded="<<infoHeader->headerSize << " - Theory=" << sizeof(BMPInfoHeader) << "/" << (sizeof(BMPInfoHeader) + sizeof(BMPColorHeader));
+        }
+    }
+
     // Extract information from BMP Info Header
     unsigned int dataOffset = fileHeader->dataOffset;
     int width = infoHeader->width;
-    int height = infoHeader->height;
+    bool isFlipped = infoHeader->height > 0;
+    int height = glm::abs(infoHeader->height);
     unsigned short bitCount = infoHeader->bitCount;
 
     // Calculate image size and data length
@@ -371,41 +433,23 @@ bool ofxBlend2DThreadedRenderer::loadBmpStreamIntoTexture(const uint8_t* data, s
     // Set the data pointer to the beginning of the pixel data
     const uint8_t* pixelData = data + dataOffset;
 
-    // Get GL pixel type from bitCount
-    int glFormat = 0;
-    switch(infoHeader->bitCount) {
-        case 1:  // Monochrome
-            glFormat = GL_DEPTH_STENCIL;
-            break;
-        case 8: // Grayscale or indexed color
-            glFormat = GL_LUMINANCE_ALPHA;
-            break;
-        case 24: // RGB
-            glFormat = GL_RGB;
-            break;
-        case 32: // RGBA
-            glFormat = GL_RGBA;
-            break;
+    // Parse 3rd header
+    const BMPColorHeader* colorHeader = reinterpret_cast<const BMPColorHeader*>(data + sizeof(BMPFileHeader) + sizeof(BMPInfoHeader));
 
-        case 4: // Indexed color
-        case 16: // RGB565
-        default:
-            ofLogWarning("ofxBlend2D::loadBmpStreamIntoTexture") << "Unsupported pixel type / bitCount = " << infoHeader->bitCount;
-            return false;
-    }
 
+    // Ensure alocated size is the same
     if(
         !tex.isAllocated() || // not allocated ?
-        tex.getTextureData().glInternalFormat != glFormat || // Different pixel format ?
+        tex.getTextureData().glInternalFormat != glInternalFormatTexture || // Different pixel format ?
         tex.getTextureData().width != width || // different width ?
         tex.getTextureData().height != height // different width ?
     ){
-        tex.allocate(width, height, glFormat);
+        tex.allocate(width, height, glInternalFormatTexture);
     }
 
     // Load the pixel data into the texture
     tex.loadData(pixelData, width, height, glFormat);
-    tex.getTextureData().bFlipTexture = true; // Buffer sends image flipped...
+    tex.getTextureData().bFlipTexture = isFlipped; // Buffer sends image flipped...
 
     return true;
 #elif defined(ofxBlend2D_BMP_PARSER_OF)
@@ -424,11 +468,23 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
 
 #ifdef DEBUG
     ImGui::SameLine();
-    ImGui::TextColored(ImVec4(1,0,0,1), "  /!\\ ");
+    ImGui::TextDisabled("  [!] ");
     if(ImGui::IsItemHovered()){
         if(ImGui::BeginTooltip()){
             ImGui::Text("Compiled in debug mode.");
-            ImGui::Text("(bad performance)");
+            ImGui::Text("(bad for performance)");
+            ImGui::EndTooltip();
+        }
+    }
+#endif
+
+#ifdef ofxBlend2D_BMP_PARSER_OF
+    ImGui::SameLine();
+    ImGui::TextDisabled("  [!]\ ");
+    if(ImGui::IsItemHovered()){
+        if(ImGui::BeginTooltip()){
+            ImGui::Text("BMP parser is OpenFrameworks");
+            ImGui::Text("(bad for performance)");
             ImGui::EndTooltip();
         }
     }
@@ -443,20 +499,52 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
     if(ImGui::InputScalar("Height", ImGuiDataType_U32, &height, (void*)&pixelSteps[0], (void*)&pixelSteps[1], "%u px", ImGuiInputTextFlags_EnterReturnsTrue)){
         reAllocate=true;
     }
+    static const std::pair<GLenum, const char*> options[] = {{GL_RGBA, "GL_RGBA"}, {GL_RGB, "GL_RGB"}, { GL_LUMINANCE, "GL_LUMINANCE" }, { 0, "Unknown" } };
+    auto curOpt = std::find_if( std::begin(options), std::end(options),
+        [this](const std::pair<GLenum, const char*>& element){
+            return element.first == this->glInternalFormatTexture;
+        }
+    );
+    if(curOpt == std::end(options)) curOpt = &options[IM_ARRAYSIZE(options)-1];
+    if (ImGui::BeginCombo("Pixel texture format", curOpt->second)){
+        for (auto& pair : options){
+            const bool is_selected = glInternalFormatTexture == pair.first;
+            if(pair.first==0) ImGui::BeginDisabled();
+            if(ImGui::Selectable(pair.second, is_selected)){
+                allocate(width, height, pair.first);
+            }
+            // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+            if(is_selected) ImGui::SetItemDefaultFocus();
+            if(pair.first==0) ImGui::EndDisabled();
+        }
+        ImGui::EndCombo();
+    }
     if(reAllocate){
         allocate(width, height);
     }
 
-    if(getTexture().isAllocated())
-        ImGui::Text("Resolution: %.0f x %.0f", getTexture().getWidth(), getTexture().getHeight());
-    else {
-        ImGui::Text("Resolution: [Not allocated!]");
-    }
-    ImGui::Checkbox("High quality rendering", &bRenderHD);
     static unsigned int numThreads[4] = { 0, 1, 0, 12 }; // cur, speed, min, max
     numThreads[0] = createInfo.threadCount;
     if(ImGui::DragScalar("NumThreads", ImGuiDataType_U32, (void*)&numThreads[0], numThreads[1], &numThreads[2], &numThreads[3], "%u" )){
         createInfo.threadCount = numThreads[0];
+    }
+    ImGui::Checkbox("High quality rendering", &bRenderHD);
+
+    if(getTexture().isAllocated()){
+        ImGui::Text("Texture Resolution: %.0f x %.0f (%s)", getTexture().getWidth(), getTexture().getHeight(), curOpt->second);
+        if(getTexture().getTextureData().glInternalFormat!=glInternalFormatTexture){
+            ImGui::SameLine();
+            ImGui::TextDisabled("[!]");
+            if(ImGui::IsItemHovered()){
+                if(ImGui::BeginTooltip()){
+                    ImGui::Text("Warning! The texture pixel format differs from the allocated one !");
+                    ImGui::EndTooltip();
+                }
+            }
+        }
+    }
+    else {
+        ImGui::Text("Texture Resolution: [Not allocated!]");
     }
 
 #ifdef ofxBlend2D_ENABLE_OFXFPS
@@ -468,10 +556,28 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
         maxFps = glm::max(maxFps, f);
     }
     averageFps /= ofxBlend2D_FPS_HISTORY_SIZE;
-    ImGui::Text("FPS: %5.1f (avg: %5.1f, min:%3.0f, max:%3.0f)", getFps(), averageFps, minFps, maxFps );
-    ImGui::Text("Frames rendered: %u", getRenderedFrames());
-    ImGui::Text("Timeframe: %.3f sec", getSyncTime() );
+
+    ImGui::Dummy({10,20});
+    ImGui::SeparatorText("Performance");
+
     ImGui::PlotHistogram("##blend2d_fps_histogram", &getFpsHist(), ofxBlend2D_FPS_HISTORY_SIZE, 0, NULL, 0.f, 75.f, ImVec2(0,30));
+
+
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2,0});
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {2, 0});
+    ImGui::SameLine();
+    ImGui::Spacing();
+    ImGui::SameLine();
+    ImGui::BeginGroup();
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY()-5);
+    ImGui::SetWindowFontScale(1.5f);
+    ImGui::Text("%5.1f", averageFps );
+    ImGui::SetWindowFontScale(1.f);
+    ImGui::Text(" %5.3f sec", getSyncTime() );
+    ImGui::EndGroup();
+    ImGui::PopStyleVar(2);
+
+    ImGui::Text("(cur:%3.0f min:%5.1f max:%5.1f)  frames: %u", getFps(), minFps, maxFps, getRenderedFrames() );
 #endif // end ofxBlend2D_ENABLE_OFXFPS
 
     ImGui::PopID();

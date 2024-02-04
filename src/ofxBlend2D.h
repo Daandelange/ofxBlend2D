@@ -55,7 +55,7 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         ~ofxBlend2DThreadedRenderer();
 
         // Sets the size
-        void allocate(int _width, int _height, int glPixelType=GL_RGBA);
+        void allocate(int _width, int _height, int glPixelType=0);
 
         // Start submitting draw commands to context
         bool begin();
@@ -66,6 +66,9 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         std::string getContextErrors();
 
         ofTexture& getTexture();
+        GLenum getTexturePixelFormat(){
+            return glInternalFormatTexture;
+        }
 
 #ifdef ofxBlend2D_ENABLE_OFXFPS
         float getFps();
@@ -91,8 +94,7 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         // Internal state
         int width = 0;
         int height = 0;
-        unsigned int numChannels = 0;
-        int glInternalFormatTexture = 0;
+        GLenum glInternalFormatTexture = 0;
         BLFormat blInternalFormat = BLFormat::BL_FORMAT_NONE;
 
 
