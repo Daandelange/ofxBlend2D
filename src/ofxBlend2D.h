@@ -75,6 +75,7 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         const float& getFpsHist() const;
         float getSyncTime();
         unsigned int getRenderedFrames() const;
+        bool pauseHistogram = false;
 #endif
 
         glm::vec2 getSize() const {

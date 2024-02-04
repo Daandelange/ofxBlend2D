@@ -157,11 +157,12 @@ void ofxBlend2DThreadedRenderer::update(){
 #ifdef ofxBlend2D_ENABLE_OFXFPS
             // Update timer. Todo: update also when no new frames & gui not visible ?
             fpsCounter.end();
-            for(int i=0; i<ofxBlend2D_FPS_HISTORY_SIZE-1; ++i){
-                fpsCounterHist[i]=fpsCounterHist[i+1];
+            if(!pauseHistogram){
+                for(int i=0; i<ofxBlend2D_FPS_HISTORY_SIZE-1; ++i){
+                    fpsCounterHist[i]=fpsCounterHist[i+1];
+                }
+                fpsCounterHist[ofxBlend2D_FPS_HISTORY_SIZE-1] = fpsCounter.getFps();
             }
-
-            fpsCounterHist[ofxBlend2D_FPS_HISTORY_SIZE-1] = fpsCounter.getFps();
 #endif
 
 #ifdef ofxBlend2D_DEBUG
@@ -506,7 +507,7 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
         }
     );
     if(curOpt == std::end(options)) curOpt = &options[IM_ARRAYSIZE(options)-1];
-    if (ImGui::BeginCombo("Pixel texture format", curOpt->second)){
+    if (ImGui::BeginCombo("Pixel format", curOpt->second)){
         for (auto& pair : options){
             const bool is_selected = glInternalFormatTexture == pair.first;
             if(pair.first==0) ImGui::BeginDisabled();
@@ -525,7 +526,7 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
 
     static unsigned int numThreads[4] = { 0, 1, 0, 12 }; // cur, speed, min, max
     numThreads[0] = createInfo.threadCount;
-    if(ImGui::DragScalar("NumThreads", ImGuiDataType_U32, (void*)&numThreads[0], numThreads[1], &numThreads[2], &numThreads[3], "%u" )){
+    if(ImGui::DragScalar("Num threads", ImGuiDataType_U32, (void*)&numThreads[0], numThreads[1], &numThreads[2], &numThreads[3], "%u" )){
         createInfo.threadCount = numThreads[0];
     }
     ImGui::Checkbox("High quality rendering", &bRenderHD);
@@ -548,20 +549,25 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
     }
 
 #ifdef ofxBlend2D_ENABLE_OFXFPS
-    float averageFps = 0, minFps = 100, maxFps = 0;
-    for(int i = 0; i<ofxBlend2D_FPS_HISTORY_SIZE; ++i){
-        const float& f = (&getFpsHist())[i];
-        averageFps += f;
-        minFps = glm::min(minFps, f);
-        maxFps = glm::max(maxFps, f);
+    static float averageFps = 0, minFps = 100, maxFps = 0;
+    if(!pauseHistogram){
+        averageFps = 0;
+        minFps = 100;
+        maxFps = 0;
+        for(int i = 0; i<ofxBlend2D_FPS_HISTORY_SIZE; ++i){
+            const float& f = (&getFpsHist())[i];
+            averageFps += f;
+            minFps = glm::min(minFps, f);
+            maxFps = glm::max(maxFps, f);
+        }
+        averageFps /= ofxBlend2D_FPS_HISTORY_SIZE;
     }
-    averageFps /= ofxBlend2D_FPS_HISTORY_SIZE;
 
     ImGui::Dummy({10,20});
     ImGui::SeparatorText("Performance");
 
     ImGui::PlotHistogram("##blend2d_fps_histogram", &getFpsHist(), ofxBlend2D_FPS_HISTORY_SIZE, 0, NULL, 0.f, 75.f, ImVec2(0,30));
-
+    pauseHistogram = ImGui::IsKeyDown(ImGuiKey_ModShift) && ImGui::IsItemHovered();
 
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2,0});
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {2, 0});
@@ -577,7 +583,7 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
     ImGui::EndGroup();
     ImGui::PopStyleVar(2);
 
-    ImGui::Text("(cur:%3.0f min:%5.1f max:%5.1f)  frames: %u", getFps(), minFps, maxFps, getRenderedFrames() );
+    ImGui::Text("(cur:%3.0f min:%5.1f max:%5.1f) %6u frames", getFps(), minFps, maxFps, getRenderedFrames() );
 #endif // end ofxBlend2D_ENABLE_OFXFPS
 
     ImGui::PopID();
