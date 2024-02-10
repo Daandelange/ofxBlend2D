@@ -449,7 +449,7 @@ bool ofxBlend2DThreadedRenderer::loadBmpStreamIntoTexture(const uint8_t* data, s
     }
 
     // Load the pixel data into the texture
-    tex.loadData(pixelData, width, height, glFormat);
+    tex.loadData((const void*)pixelData, width, height, glFormat, GL_UNSIGNED_BYTE);//GL_UNSIGNED_BYTE);
     tex.getTextureData().bFlipTexture = isFlipped; // Buffer sends image flipped...
 
     return true;
