@@ -78,7 +78,7 @@ bool ofxBlend2DThreadedRenderer::begin(){
     // Skip when dirty = let update()/thread finish the update ?
     if(isDirty){
 #ifdef ofxBlend2D_DEBUG
-        std::cout << "Skipping blend2d frame ! (thread not done yet)" << std::endl;
+        std::cout << ofGetFrameNum() << "f__ "  << "Skipping blend2d frame ! (thread not done yet)" << std::endl;
 #endif
         return false;
     }
@@ -96,7 +96,7 @@ bool ofxBlend2DThreadedRenderer::begin(){
     }
 
 #ifdef ofxBlend2D_DEBUG
-    std::cout << "Begin() : Building new ctx ! :D" << " dirty=" << isDirty << std::endl;
+    std::cout << ofGetFrameNum() << "f__ " << "Begin() : Building new ctx ! :D" << " dirty=" << isDirty << std::endl;
 #endif
     // Remember
     isSubmittingDrawCmds = true;
@@ -116,7 +116,7 @@ bool ofxBlend2DThreadedRenderer::end(){
     isDirty = true;
 
 #ifdef ofxBlend2D_DEBUG
-    std::cout << "GLThread generated new frame data !" << " dirty=" << isDirty << std::endl;
+    std::cout << ofGetFrameNum() << "f__ "  << "GLThread generated new frame data !" << " dirty=" << isDirty << std::endl;
 #endif
     flushFrameSignal.send(true);
 
@@ -166,11 +166,11 @@ void ofxBlend2DThreadedRenderer::update(){
 #endif
 
 #ifdef ofxBlend2D_DEBUG
-            std::cout << "Update() -> Received a new frame !" << " dirty=" << isDirty << std::endl;
+            std::cout << ofGetFrameNum() << "f__ "  << "Update() -> Received a new frame !" << " dirty=" << isDirty << std::endl;
 #endif
         }
 #ifdef ofxBlend2D_DEBUG
-        else std::cout << "Update() : Skipping, no new frame received yet." << " dirty=" << isDirty << std::endl;
+        else std::cout << ofGetFrameNum() << "f__ "  << "Update() : Skipping, no new frame received yet." << " dirty=" << isDirty << std::endl;
 #endif
     }
 }
