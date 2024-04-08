@@ -589,3 +589,317 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
     ImGui::PopID();
 }
 #endif // end ofxBlend2D_ENABLE_IMGUI
+
+// ImGui Helpers
+#ifdef ofxBlend2D_ENABLE_IMGUI
+#include "imgui_internal.h"
+namespace ImGuiEx {
+
+    // Static labels
+    // Note: they must be in chronological order
+    static const std::array< std::pair<BLCompOp, const char*>, (1+BL_COMP_OP_MAX_VALUE) > compOpStrings {{
+        { BL_COMP_OP_SRC_OVER,      "Source-over [default]" },
+        { BL_COMP_OP_SRC_COPY,      "Source-copy" },
+        { BL_COMP_OP_SRC_IN,        "Source-in" },
+        { BL_COMP_OP_SRC_OUT,       "Source-out" },
+        { BL_COMP_OP_SRC_ATOP,      "Source-atop" },
+        { BL_COMP_OP_DST_OVER,      "Destination-over" },
+        { BL_COMP_OP_DST_COPY,      "Destination-copy [nop]" },
+        { BL_COMP_OP_DST_IN,        "Destination-in" },
+        { BL_COMP_OP_DST_OUT,       "Destination-out" },
+        { BL_COMP_OP_DST_ATOP,      "Destination-atop" },
+        { BL_COMP_OP_XOR,           "Xor" },
+        { BL_COMP_OP_CLEAR,         "Clear" },
+        { BL_COMP_OP_PLUS,          "Plus" },
+        { BL_COMP_OP_MINUS,         "Minus" },
+        { BL_COMP_OP_MODULATE,      "Modulate" },
+        { BL_COMP_OP_MULTIPLY,      "Multiply" },
+        { BL_COMP_OP_SCREEN,        "Screen" },
+        { BL_COMP_OP_OVERLAY,       "Overlay" },
+        { BL_COMP_OP_DARKEN,        "Darken" },
+        { BL_COMP_OP_LIGHTEN,       "Lighten" },
+        { BL_COMP_OP_COLOR_DODGE,   "Color dodge" },
+        { BL_COMP_OP_COLOR_BURN,    "Color burn" },
+        { BL_COMP_OP_LINEAR_BURN,   "Linear burn" },
+        { BL_COMP_OP_LINEAR_LIGHT,  "Linear light" },
+        { BL_COMP_OP_PIN_LIGHT,     "Pin light" },
+        { BL_COMP_OP_HARD_LIGHT,    "Hard-light" },
+        { BL_COMP_OP_SOFT_LIGHT,    "Soft-light" },
+        { BL_COMP_OP_DIFFERENCE,    "Difference" },
+        { BL_COMP_OP_EXCLUSION,     "Exclusion" }
+    }};
+
+    static const char* flattenModes[] = {
+        "Use default mode (decided by Blend2D)", // BL_FLATTEN_MODE_DEFAULT
+        "Recursive subdivision flattening", // BL_FLATTEN_MODE_RECURSIVE
+    };
+    IM_STATIC_ASSERT(IM_ARRAYSIZE(flattenModes)==BL_FLATTEN_MODE_MAX_VALUE+1); // Blend2d has added a new enum value !
+
+    static const char* fillModes[] = {
+        "Non Zero", // BL_FILL_RULE_NON_ZERO
+        "Even Odd",  // BL_FILL_RULE_EVEN_ODD
+    };
+    IM_STATIC_ASSERT(IM_ARRAYSIZE(fillModes)==BL_FILL_RULE_MAX_VALUE+1); // Blend2d has added a new enum value !
+
+    static const char* renderQualities[] = {
+        "Antialias",// BL_RENDERING_QUALITY_ANTIALIAS
+    };
+    IM_STATIC_ASSERT(IM_ARRAYSIZE(renderQualities)==BL_RENDERING_QUALITY_MAX_VALUE+1); // Blend2d has added a new enum value !
+
+    static const char* patternQualities[] = {
+        "Nearest neighbor interpolation", // BL_PATTERN_QUALITY_NEAREST
+        "Bilinear interpolation" // BL_PATTERN_QUALITY_BILINEAR
+    };
+    IM_STATIC_ASSERT(IM_ARRAYSIZE(patternQualities)==BL_PATTERN_QUALITY_MAX_VALUE+1); // Blend2d has added a new enum value !
+
+    static const char* offsetModes[] = {
+        "Use default mode (decided by Blend2D)", // BL_OFFSET_MODE_DEFAULT
+        "Iterative offset construction" // BL_OFFSET_MODE_ITERATIVE
+    };
+    IM_STATIC_ASSERT(IM_ARRAYSIZE(offsetModes)==BL_OFFSET_MODE_MAX_VALUE+1); // Blend2d has added a new enum value !
+
+    static const char* gradientQualities[] = {
+        "Nearest neighbor",// BL_GRADIENT_QUALITY_NEAREST
+        "Use smoothing (unavailable)",// BL_GRADIENT_QUALITY_SMOOTH
+        "Dither (implementation-specific algo)" //BL_GRADIENT_QUALITY_DITHER,
+    };
+    IM_STATIC_ASSERT(IM_ARRAYSIZE(gradientQualities)==BL_GRADIENT_QUALITY_MAX_VALUE+1); // Blend2d has added a new enum value !
+
+    // Static bounds
+    static const double alphaMin = 0.0, alphaMax = 1.0;
+    static const double toleranceMin = 0.0, toleranceMax = 1.0; // todo: check speed+min+max here
+
+    // Like ImGui demo
+    void Blend2DHelpMarker(const char* text){
+        ImGui::SameLine();
+        ImGui::TextDisabled("[?]");
+        if(ImGui::IsItemHovered(ImGuiHoveredFlags_Stationary)){
+            if(ImGui::BeginItemTooltip()){
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+                ImGui::Text("%s", text);
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
+        }
+    }
+
+    // Multi-purpose enum selector
+    template<typename ENUM>
+    bool Blend2DCombo(const char* label, ENUM& value, const char* const* items, int count, int maxValue, const char* help = nullptr){
+        bool ret = false;
+        int intValue = value;
+        if(ImGui::Combo(label, &intValue, items, count)){
+            if(intValue<0) intValue = 0;
+            else if (intValue>maxValue) intValue = maxValue;
+            value = static_cast<ENUM>(intValue);
+            ret = true;
+        }
+        if(help != nullptr)
+            Blend2DHelpMarker(help);
+        return ret;
+    }
+
+    // BlCompOp selector, returns true on change
+    bool Blend2DCompOp(BLCompOp& op, const char* label){
+        bool ret = false;
+        if(ImGui::BeginCombo(label, compOpStrings[op].second, ImGuiComboFlags_None)){
+            for(auto co : compOpStrings){
+                if(ImGui::Selectable(co.second, op==co.first)){
+                    op = co.first;
+                    ret = true;
+                }
+                if(op==co.first){
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        else {
+            // If active, allow some extra input
+            if(ImGui::IsItemHovered(ImGuiHoveredFlags_Stationary)){//ImGui::IsItemActive()){
+                // Increment with mouse scroll
+                const float mouseWheel = ImGui::GetIO().MouseWheel;
+                if(mouseWheel != 0){//glm::abs(mouseWheel) > 0){
+                    const int dir = (mouseWheel<0?1:-1);
+                    // Loop to end ?
+                    if(op<=0 && dir<0) op=compOpStrings.rbegin()->first;//static_cast<BLCompOp>(BL_COMP_OP_MAX_VALUE);
+                    // Loop to begin ?
+                    else if(dir>0 && op>=BL_COMP_OP_MAX_VALUE) op=compOpStrings.begin()->first;//static_cast<BLCompOp>(0u);
+                    // Apply increment
+                    else op = static_cast<BLCompOp>(op+dir);
+
+                    // Claim mouse wheel
+                    ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY);
+                }
+            }
+        }
+        return ret;
+    }
+
+    bool Blend2DFlattenMode(BLFlattenMode& mode, const char* label){
+        return Blend2DCombo<BLFlattenMode>(label, mode, flattenModes, IM_ARRAYSIZE(flattenModes), BL_FLATTEN_MODE_MAX_VALUE, "Specifies how curves are offsetted (used by stroking).");
+    }
+
+    bool Blend2DFlattenMode(uint8_t& mode, const char* label){
+        BLFlattenMode flattenMode = BLFlattenMode(mode); // Weirdly a diff type
+        bool ret = false;
+        if(Blend2DFlattenMode(flattenMode, label)){
+            mode = flattenMode;
+            ret = true;
+        }
+        return ret;
+    }
+
+    bool Blend2DFlattenTolerance(double& flattenTolerance, const char* label){
+        // todo: check speed here...
+        bool ret = ImGui::DragScalar(label, ImGuiDataType_Double, &flattenTolerance, 0.01f, &toleranceMin, &toleranceMax, "%0.2f");
+        Blend2DHelpMarker("Tolerance used for curve flattening.");
+        return ret;
+    }
+
+    bool Blend2DSimplifyTolerance(double& simplifyTolerance, const char* label){
+        bool ret = ImGui::DragScalar(label, ImGuiDataType_Double, &simplifyTolerance, 0.01f, &toleranceMin, &toleranceMax, "%0.2f");
+        Blend2DHelpMarker("Tolerance used to approximate cubic curves with quadratic curves.");
+        return ret;
+    }
+
+    bool Blend2DOffsetParam(double& offset, const char* label){
+        // Todo: use other bounds ?
+        bool ret = ImGui::DragScalar(label, ImGuiDataType_Double, &offset, 0.5f, &toleranceMin, &toleranceMax, "%.1f");
+        Blend2DHelpMarker("Curve offsetting parameter, exact meaning depends on `offsetMode`.");
+        return ret;
+    }
+
+    bool Blend2DRenderingQuality(BLRenderingQuality& value, const char* label){
+        return Blend2DCombo<BLRenderingQuality>(label, value, renderQualities, IM_ARRAYSIZE(renderQualities), BL_RENDERING_QUALITY_MAX_VALUE, "The quality hint used for rendering.");
+    }
+
+    bool Blend2DPatternQuality(BLPatternQuality& value, const char* label){
+        return Blend2DCombo<BLPatternQuality>(label, value, patternQualities, IM_ARRAYSIZE(patternQualities), BL_PATTERN_QUALITY_MAX_VALUE, "The quality hint used for rendering patterns.");
+    }
+
+    bool Blend2DGradientQuality(BLGradientQuality& value, const char* label){
+        return Blend2DCombo<BLGradientQuality>(label, value, gradientQualities, IM_ARRAYSIZE(gradientQualities), BL_GRADIENT_QUALITY_MAX_VALUE, "The quality hint used for rendering gradients.");
+    }
+
+    bool Blend2DGlobalAlpha(double& globalAlpha, const char* label){
+        bool ret = false;
+        if(ImGui::DragScalar(label, ImGuiDataType_Double, &globalAlpha, 0.01f, &alphaMin, &alphaMax, "%0.2f")){
+            ret = true;
+        }
+        Blend2DHelpMarker("Global rendering alpha value.");
+        return ret;
+    }
+
+    bool Blend2DFillAlpha(double& fillAlpha, const char* label){
+        bool ret = false;
+        if(ImGui::DragScalar(label, ImGuiDataType_Double, &fillAlpha, 0.01f, &alphaMin, &alphaMax, "%0.2f")){
+            ret = true;
+        }
+        Blend2DHelpMarker("Global fill alpha value.");
+        return ret;
+    }
+
+    bool Blend2DOffsetMode(BLOffsetMode& value, const char* label){
+        return Blend2DCombo<BLOffsetMode>(label, value, offsetModes, IM_ARRAYSIZE(offsetModes), BL_OFFSET_MODE_MAX_VALUE, " Specifies how curves are offsetted (used by stroking).");
+    }
+
+    bool Blend2DOffsetMode(uint8_t& value, const char* label){
+        BLOffsetMode mode = BLOffsetMode(value); // Weirdly a diff type
+        if(Blend2DOffsetMode(mode, label)){
+            value = mode;
+            return true;
+        }
+        return false;
+    }
+
+    bool Blend2DApproximationOptions(BLApproximationOptions& approxOptions, const char* label){
+        bool anyChanged = false;
+
+        if(label!=nullptr)
+            ImGui::SeparatorText(label);
+
+        // Curve flatten mode
+        if(ImGuiEx::Blend2DFlattenMode(approxOptions.flattenMode))
+            anyChanged |= true;
+
+        // Flatten tolerance
+        if(ImGuiEx::Blend2DFlattenTolerance(approxOptions.flattenTolerance))
+            anyChanged |= true;
+
+        // Offset Mode
+        if(ImGuiEx::Blend2DOffsetMode(approxOptions.offsetMode))
+            anyChanged |= true;
+
+        // Offset param
+        if(ImGuiEx::Blend2DOffsetParam(approxOptions.offsetParameter))
+            anyChanged |= true;
+
+        // Simplify Tolerance
+        if(ImGuiEx::Blend2DSimplifyTolerance(approxOptions.simplifyTolerance))
+            anyChanged |= true;
+
+        return anyChanged;
+    }
+
+    void Blend2DContextInfo(BLContext& ctx){
+
+        ImGui::SeparatorText("Rendering");
+        BLRenderingQuality rq = ctx.renderingQuality();
+        if(ImGuiEx::Blend2DRenderingQuality(rq)){
+            ctx.setRenderingQuality(rq);
+        }
+
+        BLPatternQuality pq = ctx.patternQuality();
+        if(ImGuiEx::Blend2DPatternQuality(pq)){
+            ctx.setPatternQuality(pq);
+        }
+
+        BLGradientQuality gq = ctx.gradientQuality();
+        if(ImGuiEx::Blend2DGradientQuality(gq)){
+            ctx.setGradientQuality(gq);
+        }
+
+        ImGui::SeparatorText("Geometry");
+
+        int curFillRule = ctx.fillRule();
+        if(ImGui::Combo("Fill Rule", &curFillRule, fillModes, IM_ARRAYSIZE(fillModes))){
+            ctx.setFillRule((BLFillRule)curFillRule);
+        }
+
+        // composition operator
+        BLCompOp blendingMode = ctx.compOp();
+        if(ImGuiEx::Blend2DCompOp(blendingMode, "Blending Mode")){
+            ctx.setCompOp(blendingMode);
+        }
+
+        // Curve flatten mode
+        BLFlattenMode flattenMode = ctx.flattenMode();
+        if(ImGuiEx::Blend2DFlattenMode(flattenMode)){
+            ctx.setFlattenMode(flattenMode);
+        }
+
+        // Flatten tolerance
+        double flattenTolerance = ctx.flattenTolerance();
+        if(ImGuiEx::Blend2DFlattenTolerance(flattenTolerance)){
+            ctx.setFlattenTolerance(flattenTolerance);
+        }
+
+        ImGui::SeparatorText("Styles");
+
+        // global alpha value
+        double globalAlpha = ctx.globalAlpha();
+        if(ImGuiEx::Blend2DGlobalAlpha(globalAlpha)){
+            ctx.setGlobalAlpha(globalAlpha);
+        }
+
+        // Fill alpha value
+        double fillAlpha = ctx.fillAlpha();
+        if(ImGuiEx::Blend2DFillAlpha(fillAlpha)){
+            ctx.setFillAlpha(fillAlpha);
+        }
+
+    }
+}
+#endif
+

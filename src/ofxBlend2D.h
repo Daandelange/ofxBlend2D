@@ -128,3 +128,27 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         bool loadBmpStreamIntoTexture(const uint8_t* data, std::size_t size);
 };
 
+// ImGui Helpers
+#ifdef ofxBlend2D_ENABLE_IMGUI
+namespace ImGuiEx {
+    bool Blend2DFlattenMode(BLFlattenMode& mode, const char* label);
+    // BlCompOp selector, returns true on change
+    bool Blend2DCompOp(BLCompOp& op, const char* label="Composition Blending Operator");
+    bool Blend2DFlattenMode(BLFlattenMode& mode, const char* label="Flatten Mode");
+    bool Blend2DFlattenMode(uint8_t& mode, const char* label="Flatten Mode");
+    bool Blend2DFlattenTolerance(double& flattenTolerance, const char* label="Flatten Tolerance");
+    bool Blend2DSimplifyTolerance(double& simplifyTolerance, const char* label="Simplify Tolerance");
+    bool Blend2DOffsetParam(double& offset, const char* label="Offset Parameter");
+    bool Blend2DRenderingQuality(BLRenderingQuality& value, const char* label="Rendering Quality");
+    bool Blend2DPatternQuality(BLPatternQuality& value, const char* label="Pattern Quality");
+    bool Blend2DGradientQuality(BLGradientQuality& value, const char* label="Gradient Quality");
+    bool Blend2DGlobalAlpha(double& globalAlpha, const char* label="Global Alpha");
+    bool Blend2DFillAlpha(double& fillAlpha, const char* label="Fill Alpha");
+    bool Blend2DOffsetMode(BLOffsetMode& value, const char* label="Offset Mode");
+    bool Blend2DOffsetMode(uint8_t& value, const char* label="Offset Mode");
+    bool Blend2DApproximationOptions(BLApproximationOptions& approxOptions, const char* label="Approximation Options");
+    void Blend2DContextInfo(BLContext& ctx);
+
+}
+#endif
+
