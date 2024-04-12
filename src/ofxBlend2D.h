@@ -39,10 +39,6 @@
 #define ofxBlend2D_BMP_PARSER_INTERNAL
 #endif
 
-#ifdef ofxBlend2D_ENABLE_IMGUI
-#   include "imgui.h"
-#endif
-
 #ifdef ofxBlend2D_ENABLE_OFXFPS
 #   include "ofxFps.h"
 #endif
@@ -59,14 +55,14 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
 
         // Start submitting draw commands to context
         bool begin();
-        bool end();
-        void update();
+        bool end(unsigned int frameNum, std::string frameFileToSave);
+        void update(const bool waitForThread=false);
 
         BLContext& getBlContext();
         std::string getContextErrors();
 
         ofTexture& getTexture();
-        GLenum getTexturePixelFormat(){
+        GLint getTexturePixelFormat(){
             return glInternalFormatTexture;
         }
 
@@ -81,6 +77,9 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         glm::vec2 getSize() const {
             return {width, height};
         }
+        bool isDirty() const {
+            return bIsDirty;
+        }
 
         // Threads
         void stopBlThread();
@@ -90,16 +89,47 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         void drawImGuiSettings();
 #endif
 
+        // A struct send to the thread with additional parameters
+        // /!\ Takes ownership of ctx
+        struct ofxBlend2DThreadedRendererData {
+            BLContext ctx;
+            unsigned int frameNum;
+            std::string fileToSave; // saves frame to location if not empty (threaded)
+            bool isValid;
+            //ofxBlend2DThreadedRendererData() = delete;
+            ofxBlend2DThreadedRendererData() :
+                ctx(),
+                frameNum(0u),
+                fileToSave(""),
+                isValid(false)
+            {
+
+            }
+            ofxBlend2DThreadedRendererData(BLContext&& _ctx, unsigned int _frameNum, std::string _fileToSave="") :
+                ctx(std::move(_ctx)),
+                frameNum(_frameNum),
+                fileToSave(_fileToSave),
+                isValid(true)
+            {
+
+            }
+            ~ofxBlend2DThreadedRendererData(){
+                // Releases ctx when done
+                ctx.end();
+                isValid = false;
+            };
+        };
+
         // todo: fps
     protected:
         // Internal state
-        int width = 0;
-        int height = 0;
-        GLenum glInternalFormatTexture = 0;
+        unsigned int width = 0;
+        unsigned int height = 0;
+        GLint glInternalFormatTexture = 0;
         BLFormat blInternalFormat = BLFormat::BL_FORMAT_NONE;
 
 
-        bool isDirty = false; // Note: also protects some threaded variables
+        bool bIsDirty = false; // Note: also protects some threaded variables
         bool isSubmittingDrawCmds = false;
         unsigned int renderedFrames = 0;
         bool bRenderHD = true;
@@ -122,10 +152,21 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         // Threads
         void threadedFunction() override;
         ofThreadChannel<BLArray<uint8_t> > pixelDataFromThread;
-        ofThreadChannel<bool> flushFrameSignal;
+        ofThreadChannel<ofxBlend2DThreadedRendererData> flushFrameSignal;
 
         // BMP loading
         bool loadBmpStreamIntoTexture(const uint8_t* data, std::size_t size);
+#ifdef ofxBlend2D_BMP_PARSER_INTERNAL
+        // Threadable fn !
+        struct BmpHeaderInfo {
+            unsigned int width, height;
+            bool isFlipped;
+            GLint glFormat;
+            unsigned int dataOffset;
+            unsigned short bitCount;
+        };
+        static bool threadableParseBmpStream(BmpHeaderInfo& info, const uint8_t* data, std::size_t size);
+#endif
 };
 
 // ImGui Helpers
