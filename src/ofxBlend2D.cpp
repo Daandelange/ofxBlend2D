@@ -6,6 +6,7 @@
 #include "ofImage.h"
 
 #ifdef ofxBlend2D_ENABLE_IMGUI
+#   include "imgui.h"
 #   include "ofxImGui.h"
 #endif
 

@@ -146,7 +146,7 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
 
 #ifdef ofxBlend2D_ENABLE_OFXFPS
         ofxFps fpsCounter;
-        float fpsCounterHist[ofxBlend2D_FPS_HISTORY_SIZE];
+        float fpsCounterHist[ofxBlend2D_FPS_HISTORY_SIZE] = {0};
 #endif
 
         // Threads
