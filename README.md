@@ -14,8 +14,8 @@ An OpenFrameworks addon integrating [libBlend2D](https://blend2d.com/), a blazin
 - The texture is available for rendering and updates as soon as a new frame is available.
 
 # Compatibility
-Tested on OSX + of0.11.2.  
-Should work on Linux and Windows too.
+Tested on MacOs + Linux, both of_v0.11.2 and of_v0.12.0, both c++14 and c++17.  
+Should work on Windows too.
 
 # Installation
 - Warning! libBlend2D doesn't compile with **Clang 3.8 and below** (until Xcode 8.x).  
@@ -34,9 +34,11 @@ I recommend reading trough the [Blend2D guide](https://blend2d.com/doc/getting-s
 
 Some OpenFrameworks / Blend2D glue utilities are being written, any contribution is welcome to facilitate interaction with OF objects.
 
+Please note that Blend2d runs on a JIT interpreter and performance varies a lot between Debug and Release builds due to their respective exported debug symbols and compile-time optimisations. For performance, prefer Release builds.
+
 # Examples
 - `example-simple` : A bare-bones example of how to use the C++ Blend2D API, pretty similar to the Blend2D "getting started" examples.
-- `example-svg` : Loads an SVG to provide some `ofPath` which are converted to `BLPath` for rendering in Blend2D.
+- `example-svg` : Loads an SVG to provide some `ofPath` which are converted to `BLPath` for rendering in Blend2D. Also has a GUI which lets you interactively change some parameters.
 
 # Future ideas
 - Implement as ofRenderer subclass (would need porting all `ofDraw...` functions to ofxBlend2D, but provide an easier integration with OF).
