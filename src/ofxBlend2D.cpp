@@ -4,6 +4,7 @@
 #include "ofLog.h"
 #include <iostream>
 #include "ofImage.h"
+#include "ofPixels.h"
 
 #ifdef ofxBlend2D_ENABLE_IMGUI
 #   include "imgui.h"

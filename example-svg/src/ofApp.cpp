@@ -52,7 +52,8 @@ void ofApp::draw(){
                 }
             }
         }
-        blend2d.end();
+        unsigned int frameNum = ofGetFrameNum();
+        blend2d.end(frameNum);
     }
 
     if(bRenderBoundingboxes){

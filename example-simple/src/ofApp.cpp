@@ -108,7 +108,8 @@ void ofApp::draw(){
         ctx.rotate(variation*TWO_PI);
         ctx.fillTriangle(0,0, 400, 0, 200, 400, toBLColor(ofFloatColor::orange));
 
-        blend2d.end();
+        unsigned int frameNum = ofGetFrameNum();
+        blend2d.end(frameNum);
     }
 
     // - - - - - -
