@@ -15,7 +15,8 @@
 //inline constexpr BLRgba32 toBLColor(const ofFloatColor& _c); // todo: make this olColor_ templated ?
 //inline constexpr BLRgba32 toBLColor(ofFloatColor const& _c); // todo: make this olColor_ templated ?
 inline constexpr BLRgba32 toBLColor(ofFloatColor const& _c, float _forceAlpha=-1.f){
-    return BLRgba32(_c.r*255, _c.g*255, _c.b*255, (_forceAlpha<0)?(_c.a*255):(_forceAlpha*255));
+    // Note: Blend2d uses the BGRA notation
+    return BLRgba32(255u*_c.b, 255u*_c.g, 255u*_c.r, (_forceAlpha<0)?(255u*_c.a):(255u*_forceAlpha));
 }
 
 inline constexpr BLPoint toBLPoint(glm::vec2 const& _p){

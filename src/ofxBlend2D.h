@@ -55,8 +55,8 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
 
         // Start submitting draw commands to context
         bool begin();
-        bool end(unsigned int frameNum, std::string frameFileToSave);
-        void update(const bool waitForThread=false);
+        bool end(unsigned int frameNum, std::string frameFileToSave="");
+        bool update(const bool waitForThread=false, const bool noFrameSkipping=false);
 
         BLContext& getBlContext();
         std::string getContextErrors();

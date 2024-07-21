@@ -129,7 +129,8 @@ bool ofxBlend2DThreadedRenderer::end(unsigned int frameNum, std::string frameFil
     return true;
 }
 
-void ofxBlend2DThreadedRenderer::update(const bool waitForThread){
+// Returns true if  frame was received
+bool ofxBlend2DThreadedRenderer::update(const bool waitForThread, const bool noFrameSkipping){
     assert(!isSubmittingDrawCmds);
 
     if(bIsDirty){
@@ -137,7 +138,7 @@ void ofxBlend2DThreadedRenderer::update(const bool waitForThread){
         // Wait long for once ?
         bool newFrame = pixelDataFromThread.tryReceive(bufFromThread, waitForThread?999999:0);
         // Empty queue until most recent image to grab (should never happen)
-        while(pixelDataFromThread.tryReceive(bufFromThread, 0)){
+        if(!noFrameSkipping) while(pixelDataFromThread.tryReceive(bufFromThread, 0)){
             newFrame = true;
         }
         if(newFrame){
@@ -180,7 +181,9 @@ void ofxBlend2DThreadedRenderer::update(const bool waitForThread){
 #ifdef ofxBlend2D_DEBUG
         else std::cout << ofGetFrameNum() << "f__ "  << "Update() : Skipping, no new frame received yet." << " dirty=" << bIsDirty << std::endl;
 #endif
+        return newFrame;
     }
+    return false;
 }
 
 BLContext& ofxBlend2DThreadedRenderer::getBlContext(){
@@ -254,6 +257,9 @@ void ofxBlend2DThreadedRenderer::threadedFunction(){
 #ifdef ofxBlend2D_DEBUG
         std::cout << "Thread : encoding new frame !" << std::endl;
 #endif
+
+        // Simulate renderer lag !
+        //std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         // Lock mutex : from here, we can use the protected vars (expecting that the gl thread doesn't use them anymore)
         // Protected vars : ctx, , all linked BLPaths
@@ -447,6 +453,8 @@ bool ofxBlend2DThreadedRenderer::threadableParseBmpStream(ofxBlend2DThreadedRend
             return false; // ???
         }
     }
+
+    // Todo: Check for row padding wizardry ? Maybe tex.loadData already does it for us ?
 
     // Extract information from BMP Info Header
     info.dataOffset = fileHeader->dataOffset;
