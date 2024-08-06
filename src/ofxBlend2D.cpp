@@ -3,6 +3,7 @@
 #include "ofUtils.h"
 #include "ofLog.h"
 #include <iostream>
+#include <cassert>
 #include "ofImage.h"
 #include "ofPixels.h"
 
@@ -135,7 +136,7 @@ bool ofxBlend2DThreadedRenderer::update(const bool waitForThread, const bool noF
     assert(!isSubmittingDrawCmds);
 
     if(bIsDirty){
-        static BLArray<uint8_t> bufFromThread; // todo: Being static, will this be deleted correctly ?
+        static BLImageData bufFromThread;
         // Wait long for once ?
         bool newFrame = pixelDataFromThread.tryReceive(bufFromThread, waitForThread?999999:0);
         // Empty queue until most recent image to grab (should never happen)
@@ -154,7 +155,7 @@ bool ofxBlend2DThreadedRenderer::update(const bool waitForThread, const bool noF
             //ctx.flush(BLContextFlushFlags::BL_CONTEXT_FLUSH_SYNC);
 
             // Grab the result
-            if(!loadBmpStreamIntoTexture((bufFromThread.data()), bufFromThread.size())){
+            if(!loadImageDataIntoTexture(&bufFromThread)){
                 ofLogWarning("ofxBlend2D") << "Could not load data from pixels !" << std::endl;
             }
 
@@ -274,259 +275,69 @@ void ofxBlend2DThreadedRenderer::threadedFunction(){
 
         // Grab the result
         BLArray<uint8_t> resultData;
-        BLResult resultWrite = img.writeToData(resultData, codec);
-
-        if(resultWrite != BL_SUCCESS){
-            ofLogWarning("ofxBlend2DThreadedRenderer") << "Couldn't load texture! Error=" << resultWrite << " and " << getContextErrors();
-            // TODO : handle error in thread ?
+        BLImageData imgData;
+        BLResult resultDataGet = img.getData(&imgData);
+        if(resultDataGet != BL_SUCCESS){
+            ofLogWarning("ofxBlend2DThreadedRenderer") << "Couldn't load texture! Error=" << resultDataGet << "(" << blResultToString(resultDataGet) << ") and ContextError=" << getContextErrors();
+            return;
         }
-        else {
 
-            // Gotta save the file ?
-            if(frameData.fileToSave.length()>0){
-                // Decode the data
-                BmpHeaderInfo info;
-                if(threadableParseBmpStream(info, resultData.data(), resultData.size())){
-                    // Build pixels !
-                    ofPixels pixels;
-                    pixels.setFromPixels((const unsigned char*)resultData.data()+info.dataOffset, info.width, info.height, ofGetImageTypeFromGLType(info.glFormat));
+        std::size_t resultSize = imgData.size.h * imgData.stride;
 
-                    // Save the data !
-                    if(!ofSaveImage(pixels, ofToDataPath(frameData.fileToSave), OF_IMAGE_QUALITY_BEST)){
-                        ofLogError("ofxBlend2DThreadedRenderer::threadedFunction()") << "Couldn't write frame to file. Frame=" << frameData.frameNum;
-                    }
-                }
-                else {
-                    ofLogError("ofxBlend2DThreadedRenderer::threadedFunction()") << "Couldn't format frame file path. Frame=" << frameData.frameNum;
-                }
+        // Gotta save the file ?
+        if(frameData.fileToSave.length()>0){
+            // Decode the data
+            GLint glFormat = blFormatToGlFormat(imgData.format);
+            auto numChannels = ofGetNumChannelsFromGLFormat(glFormat);
+
+            // Build pixels object
+            ofPixels pixels;
+            pixels.setFromAlignedPixels((const unsigned char*)imgData.pixelData, imgData.size.w, imgData.size.h, ofxBlend2DGetOfPixelFormatFromGLFormat(glFormat), imgData.stride);
+
+            // Save the data !
+            if(!ofSaveImage(pixels, ofToDataPath(frameData.fileToSave), OF_IMAGE_QUALITY_BEST)){
+                ofLogError("ofxBlend2DThreadedRenderer::threadedFunction()") << "Couldn't write frame to file. Frame=" << frameData.frameNum;
             }
+        }
 
-            // Forward data to thread !
+        // Forward data to thread !
 #if __cplusplus>=201103
-			pixelDataFromThread.send(std::move(resultData));
+        pixelDataFromThread.send(std::move(imgData));
 #else
-			pixelDataFromThread.send(resultData);
+        pixelDataFromThread.send(imgData);
 #endif
-        }
-	}
 }
 
-#ifdef ofxBlend2D_BMP_PARSER_INTERNAL
-#pragma pack(push, 1)
-struct BMPFileHeader {
-    //char signature[2]; // Should be "BM"
-    uint16_t signature{ 0x4D42 };          // File type always "BM" which is 0x4D42 (stored as hex uint16_t in little endian)
-    uint32_t fileSize{ 0 };                // Size of the file (in bytes)
-    uint16_t reserved1{ 0 };               // Reserved, always 0
-    uint16_t reserved2{ 0 };               // Reserved, always 0
-    uint32_t dataOffset{ 0 };              // Start position of pixel data (bytes from the beginning of the file)
-};
+bool ofxBlend2DThreadedRenderer::loadImageDataIntoTexture(const BLImageData* data){
+    if(data==nullptr) return false;
 
-struct BMPInfoHeader {
-    uint32_t headerSize{ 0 };               // Size of this header (in bytes)
-    int32_t width{ 0 };                     // width of bitmap in pixels
-    int32_t height{ 0 };                    // width of bitmap in pixels
-                                            //       (if positive, bottom-up, with origin in lower left corner)
-                                            //       (if negative, top-down, with origin in upper left corner)
-    uint16_t planes{ 1 };                   // # of planes (always 1)
-    uint16_t bitCount{ 0 };                 // # of bits per pixel (8 B - 16 BA - 24 RGB - 32 RGBA)
-    uint32_t compression{ 0 };              // 0 (compressed) or 3 (uncompressed)
-    uint32_t imageSize{ 0 };                // 0 - for uncompressed images
-    int32_t xPixelsPerMeter{ 0 };
-    int32_t yPixelsPerMeter{ 0 };
-    uint32_t colorsUsed{ 0 };               // # color indexes in the color table. Use 0 for the max number of colors allowed by bit_count (full color)
-    uint32_t importantColors{ 0 };          // # of colors used for displaying the bitmap. If 0 all colors are important
-};
-
-struct BMPColorHeader {
-    uint32_t redMask{ 0x00ff0000 };         // Bit mask for the red channel
-    uint32_t greenMask{ 0x0000ff00 };       // Bit mask for the green channel
-    uint32_t blueMask{ 0x000000ff };        // Bit mask for the blue channel
-    uint32_t alphaMask{ 0xff000000 };       // Bit mask for the alpha channel
-    uint32_t colorSpace{ 0x73524742 };      // Default 0x73524742 (=sRGB)
-    //uint32_t colorSpaceData[16]{ 0 };       // Colorspace data (unused for sRGB color space), to fill the structure up to 64 bytes
-};
-#pragma pack(pop)
-
-GLint getOpenGLFormat(const BMPInfoHeader* infoHeader) {
-    // Get GL pixel type from bitCount
-    GLint glFormat = 0;
-    switch(infoHeader->bitCount) {
-        case 1:  // Monochrome
-            glFormat = GL_DEPTH_STENCIL;
-            break;
-        case 8: // Grayscale or indexed color
-            glFormat = GL_LUMINANCE_ALPHA;
-            break;
-        case 24: // RGB
-            glFormat = GL_RGB;
-            break;
-        case 32: // RGBA
-            glFormat = GL_RGBA;
-            break;
-
-        case 4: // Indexed color
-        case 16: // RGB565
-        default:
-            ofLogWarning("ofxBlend2D::getOpenGLFormat") << "Unsupported pixel type / bitCount = " << infoHeader->bitCount;
-            return 0;
-    }
-    return glFormat;
-}
-
-GLint getOpenGLFormatFromColorHeader(const BMPColorHeader& colorHeader) {
-    // Getting mask R-g-b-a : 00ff0000-0000ff00-000000ff-ff000000 (indicates position of data)
-    if (colorHeader.redMask == 0x0000FF && colorHeader.greenMask == 0x00FF00 &&
-        colorHeader.blueMask == 0xFF0000 && colorHeader.alphaMask == 0x000000) {
-        return GL_RGBA;  // Standard RGBA ordering
-    } else if (colorHeader.redMask == 0x00FF0000 && colorHeader.greenMask == 0x0000FF00 &&
-               colorHeader.blueMask == 0x000000FF && colorHeader.alphaMask == 0xFF000000) {
-        return GL_BGRA;  // Standard BGRA ordering
-    } else if (colorHeader.redMask == 0x00FF0000 && colorHeader.greenMask == 0x0000FF00 &&
-               colorHeader.blueMask == 0x000000FF && colorHeader.alphaMask == 0x00000000) {
-        return GL_RGB;   // Standard RGB ordering
-    } else if (colorHeader.redMask == 0x000000FF && colorHeader.greenMask == 0x00000000 &&
-               colorHeader.blueMask == 0x00000000 && colorHeader.alphaMask == 0x00000000) {
-        return GL_LUMINANCE;  // Single channel (luminance/grayscale)
-    } else {
-        ofLogWarning("ofxBlend2D::getOpenGLFormat") << "Unsupported color mask : " << std::hex << colorHeader.redMask << "-" << colorHeader.greenMask << "-" << colorHeader.blueMask << "-" << colorHeader.alphaMask;
-        return GL_BGRA;
-    }
-}
-#endif
-
-#ifdef ofxBlend2D_BMP_PARSER_INTERNAL
-bool ofxBlend2DThreadedRenderer::threadableParseBmpStream(ofxBlend2DThreadedRenderer::BmpHeaderInfo& info, const uint8_t* data, std::size_t size){
-
-    // Ensure data is large enough to contain BMP file and image headers
-    if(size < sizeof(BMPFileHeader) + sizeof(BMPInfoHeader)) {
-        ofLogWarning("ofxBlend2D::threadableParseBmpStream") << "The header is missing!";
-        return false;
-    }
-
-    // Parse BMP headers
-    const BMPFileHeader* fileHeader = reinterpret_cast<const BMPFileHeader*>(data);
-
-    // Check BMP signature
-    if(fileHeader->signature != 0x4D42) {
-        ofLogWarning("ofxBlend2D::threadableParseBmpStream") << "Invalid BMP buffer !";
-        return false;
-    }
-
-    // Parse 2nd header
-    const BMPInfoHeader* infoHeader = reinterpret_cast<const BMPInfoHeader*>(data + sizeof(BMPFileHeader));
-
-    // Check compression
-    if(infoHeader->compression!=0){
-        //const BMPColorHeader* colorHeader = reinterpret_cast<const BMPColorHeader*>(data + dataOffset);
-        ofLogWarning("ofxBlend2D::threadableParseBmpStream") << "The buffer is compressed BMP, I don't talk compression !";
-        return false;
-    }
-
-    // Guess pixel format from info header
-    info.glFormat = getOpenGLFormat(infoHeader);
-
-    // Grab Color header if present (only used in RGBA formats)
-    // Disabled code, wasn't working. Probalby returning blInternalFormat instead of glInternalFormat !?
-    if(false && infoHeader->bitCount == 32 && infoHeader->headerSize > sizeof(BMPInfoHeader)){
-        if(
-            // Does the buffer go far enough ?
-            (size >= (sizeof(BMPFileHeader) + sizeof(BMPInfoHeader) + sizeof(BMPColorHeader))) &&
-            // Header size is extended after color header !
-            (infoHeader->headerSize >= ((sizeof(BMPInfoHeader) + sizeof(BMPColorHeader))))
-        ) {
-            const BMPColorHeader* colorHeader = reinterpret_cast<const BMPColorHeader*>(data + sizeof(BMPFileHeader) + sizeof(BMPInfoHeader));
-            // Is it sRGB ? Can't verify, blend2D sets it to 0x00000001 !
-            //if(colorHeader->colorSpace != 0x73524742){
-            //    ofLogWarning("ofxBlend2D::loadBmpStreamIntoTexture") << "Unknown color space ! = "<< std::hex << colorHeader->colorSpace;
-            //    // return here ? is this an error ?
-            //}
-            //else {
-
-            GLint nf = getOpenGLFormatFromColorHeader(*colorHeader);
-            if(nf!=0) info.glFormat = nf;
-
-            //}
-        }
-        else {
-            // Maybe this is no error ?
-            ofLogWarning("ofxBlend2D::threadableParseBmpStream") << "Corrupted color header ! size=" << size << " -  encoded="<<infoHeader->headerSize << " - Theory=" << sizeof(BMPInfoHeader) << "/" << (sizeof(BMPInfoHeader) + sizeof(BMPColorHeader));
-            return false; // ???
-        }
-    }
-
-    // Todo: Check for row padding wizardry ? Maybe tex.loadData already does it for us ?
-
-    // Extract information from BMP Info Header
-    info.dataOffset = fileHeader->dataOffset;
-    info.width = infoHeader->width;
-    info.isFlipped = infoHeader->height > 0;
-    info.height = glm::abs(infoHeader->height);
-    info.bitCount = infoHeader->bitCount;
-
-    // Calculate image size and data length
-    //unsigned int imageSize = (size - dataOffset);
-    //unsigned int dataLength = imageSize; // Adjust as needed based on image format
-
-//    std::cout << "Image Dimensions: " << width << " x " << height << std::endl;
-//    std::cout << "Pixel Format: " << bitCount << " bits per pixel /" << sizeof(uint8_t) << "=" << infoHeader->bitCount/sizeof(uint8_t) << std::endl;
-//    std::cout << "Data Offset: " << dataOffset << std::endl;
-//    std::cout << "Data Length: " << dataLength << std::endl;
-
-    // Parse 3rd header
-    // Todo : grab pixels info from the color header ??
-    //const BMPColorHeader* colorHeader = reinterpret_cast<const BMPColorHeader*>(data + sizeof(BMPFileHeader) + sizeof(BMPInfoHeader));
-
-    // Get GL pixel type
-    //GLint glFormat = getOpenGLFormat(*colorHeader);
-
-    return true;
-}
-#endif
-
-// Parsing BMP buffer into the texture
-bool ofxBlend2DThreadedRenderer::loadBmpStreamIntoTexture(const uint8_t* data, std::size_t size){
-#ifdef ofxBlend2D_BMP_PARSER_INTERNAL
-
-    BmpHeaderInfo info;
-    if(!threadableParseBmpStream(info, data, size)){
-        ofLogError("ofxBlend2DThreadedRenderer::loadBmpStreamIntoTexture") << "Unable to fetch BMP header !";
-        return false;
-    }
-
-    // Set the data pointer to the beginning of the pixel data
-    const uint8_t* pixelData = data + info.dataOffset;
+    // Parse pixel format
+    GLint glFormat = blFormatToGlFormat(data->format);
+    auto numChannels = ofGetNumChannelsFromGLFormat(glFormat);
 
     // Ensure alocated size is the same
     // Checkme : compare width with blend2d size or bmp header size ???
     if(
         (!tex.isAllocated()) || // not allocated ?
         (tex.getTextureData().glInternalFormat != glInternalFormatTexture) || // Different pixel format ?
-        (tex.getTextureData().width != info.width) || // different width ?
-        (tex.getTextureData().height != info.height) // different width ?
+        (tex.getTextureData().width != data->size.w) || // different width ?
+        (tex.getTextureData().height != data->size.h) // different width ?
     ){
         if(
-                (info.glFormat != glInternalFormatTexture) ||
-                (info.width != width) || // different width ?
-                (info.height != height) // different width ?
+                (glFormat != glInternalFormatTexture) ||
+                (data->size.w != width) || // different width ?
+                (data->size.h != height) // different width ?
         ){
-           ofLogWarning("ofxBlend2DThreadedRenderer::loadBmpStreamIntoTexture") << "The returned BMP header is not the same resolution as the configured size ! Resizing texture to match BMP data !";
+           ofLogWarning("ofxBlend2DThreadedRenderer::loadImageDataIntoTexture") << "The returned BMP header is not the same resolution as the configured size ! Resizing texture to match BMP data !";
         }
-        tex.allocate(info.width, info.height, glInternalFormatTexture);
+        tex.allocate(data->size.w, data->size.h, glInternalFormatTexture);
     }
 
     // Load the pixel data into the texture
-    tex.loadData((const void*)pixelData, width, height, info.glFormat, ofGetGLTypeFromInternal(info.glFormat)); // GL_UNSIGNED_BYTE
-    tex.getTextureData().bFlipTexture = info.isFlipped; // Buffer sends image flipped...
-
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, data->stride/numChannels); // Allow stride within data
+    tex.loadData((const void*)data->pixelData, data->size.w, data->size.h, glFormat, ofGetGLTypeFromInternal(glFormat)); // GL_UNSIGNED_BYTE
+    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); // resets GL value
     return true;
-#elif defined(ofxBlend2D_BMP_PARSER_OF)
-    // Load with Openframeworks loader (which uses FreeImage)
-    ofBuffer buf(reinterpret_cast<const char*>(data), size);
-    return ofLoadImage(tex, buf);
-#else
-    return false;
-#endif
 }
 
 #ifdef ofxBlend2D_ENABLE_IMGUI

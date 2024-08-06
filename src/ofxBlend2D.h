@@ -22,22 +22,17 @@
 
 #define ofxBlend2D_FPS_HISTORY_SIZE 120
 
-// Uncomment or set compiler flag to enable ImGui helper widgets
+// Uncomment or set compiler flag to:
+// Enable ImGui helper widgets
 //#define ofxBlend2D_ENABLE_IMGUI
 
-// Uncomment to embed an fps counter !
+// Embed an fps counter !
 //#define ofxBlend2D_ENABLE_OFXFPS
 
-// Uncomment to enable very verbose threading debug messages
+
+// Enable very verbose threading debug messages
 //#define ofxBlend2D_DEBUG
 
-// Set default BMP decrypter (default & recommended : ofxBlend2D_BMP_PARSER_INTERNAL)
-// Note : OF's freetype based BMP loader doesn't work with the headers sent by Blend2D in Linux+Windows.
-// On OSX it works fine but is quite slow, so ofxBlend2D_BMP_PARSER_INTERNAL is also recommended.
-//#define ofxBlend2D_BMP_PARSER_OF
-#if !defined(ofxBlend2D_BMP_PARSER_OF) && !defined(ofxBlend2D_BMP_PARSER_INTERNAL)
-#define ofxBlend2D_BMP_PARSER_INTERNAL
-#endif
 
 #ifdef ofxBlend2D_ENABLE_OFXFPS
 #   include "ofxFps.h"
@@ -64,6 +59,10 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         ofTexture& getTexture();
         GLint getTexturePixelFormat(){
             return glInternalFormatTexture;
+        }
+
+        void setNumThreads(const int numThreads){
+            createInfo.threadCount = numThreads;
         }
 
 #ifdef ofxBlend2D_ENABLE_OFXFPS
@@ -151,22 +150,10 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
 
         // Threads
         void threadedFunction() override;
-        ofThreadChannel<BLArray<uint8_t> > pixelDataFromThread;
+        ofThreadChannel<BLImageData> pixelDataFromThread;
         ofThreadChannel<ofxBlend2DThreadedRendererData> flushFrameSignal;
 
-        // BMP loading
-        bool loadBmpStreamIntoTexture(const uint8_t* data, std::size_t size);
-#ifdef ofxBlend2D_BMP_PARSER_INTERNAL
-        // Threadable fn !
-        struct BmpHeaderInfo {
-            unsigned int width, height;
-            bool isFlipped;
-            GLint glFormat;
-            unsigned int dataOffset;
-            unsigned short bitCount;
-        };
-        static bool threadableParseBmpStream(BmpHeaderInfo& info, const uint8_t* data, std::size_t size);
-#endif
+        bool loadImageDataIntoTexture(const BLImageData* data);
 };
 
 // ImGui Helpers
