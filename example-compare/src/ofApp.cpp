@@ -196,7 +196,7 @@ void ofApp::draw(){
     // Help
     int yPos = 0;
     ofDrawBitmapStringHighlight("This examples compares Blend2D rendering with OpenFrameworks rendering in terms of performance and graphical quality.", {20, yPos+=20});
-    ofDrawBitmapStringHighlight("You can toggle rendering to compare the resulting FPS.", {20, yPos+=20});
+    ofDrawBitmapStringHighlight("You can toggle rendering to compare the resulting FPS by pressing X.", {20, yPos+=20});
     yPos+=10;
     ofDrawBitmapStringHighlight( ofToString("       Blend2D FPS = ")+blRendererFps.toString(), {20,yPos+=20});
     ofDrawBitmapStringHighlight( ofToString("OpenFrameworks FPS = ")+ofToString(ofGetFrameRate()), {20, yPos+=20});
@@ -217,6 +217,14 @@ void ofApp::draw(){
 void ofApp::keyPressed(int key){
     if(key==' '){
         bSaveNextFrame = true;
+    }
+    else if(key=='x'){
+        useBlend2DForRendering = !useBlend2DForRendering;
+
+        // Make current texture transparent to prevent a glitch when the old frame is displayed
+        if(useBlend2DForRendering){
+            blend2d.clearTexture();
+        }
     }
 }
 

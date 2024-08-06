@@ -57,8 +57,13 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         std::string getContextErrors();
 
         ofTexture& getTexture();
-        GLint getTexturePixelFormat(){
+        GLint getTexturePixelFormat() const {
             return glInternalFormatTexture;
+        }
+
+        // Resets content of texture, can be used to flag it dirty
+        void clearTexture(){
+            tex.clear();
         }
 
         void setNumThreads(const int numThreads){
