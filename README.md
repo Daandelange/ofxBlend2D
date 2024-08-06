@@ -13,9 +13,16 @@ An OpenFrameworks addon integrating [libBlend2D](https://blend2d.com/), a blazin
 - When the threads are done rendering, the resulting pixels are loaded into an `ofTexture` (from within the GL thread).
 - The texture is available for rendering and updates as soon as a new frame is available.
 
+# When to use
+OpenFrameworks has its own renderer pipelines, why use a different one ?!?  
+I can think of multiple use cases, but generally this should be thought of as an additional renderer rather than the main renderer.  
+Depending on your needs, ofxBlend2D can be faster to render than OpenFrameworks, for example when your draw commands exceed **real-time** rendering capabilities of your GPU. This is typically useful on computers with a **poor GPU** and a **good multithreaded CPU**, or submitting lots of real-time (2d) vector data.
+
+See example-compare for a performance test, by adapting the draw code to your usecase.
+
 # Compatibility
 Tested on MacOs + Linux, both of_v0.11.2 and of_v0.12.0, both c++14 and c++17.  
-Should work on Windows too.
+Should work on Windows too, probably with some inclusion fixes.
 
 # Installation
 - Warning! libBlend2D doesn't compile with **Clang 3.8 and below** (until Xcode 8.x).  
@@ -30,6 +37,7 @@ Should work on Windows too.
 
 
 # Usage
+For now, we have to use the Blend2D pipeline and commands, there is no `ofDraw...()` compatibility yet.  
 I recommend reading trough the [Blend2D guide](https://blend2d.com/doc/getting-started.html) to get started using their graphics API.
 
 Some OpenFrameworks / Blend2D glue utilities are being written, any contribution is welcome to facilitate interaction with OF objects.
@@ -39,9 +47,13 @@ Please note that Blend2d runs on a JIT interpreter and performance varies a lot 
 # Examples
 - `example-simple` : A bare-bones example of how to use the C++ Blend2D API, pretty similar to the Blend2D "getting started" examples.
 - `example-svg` : Loads an SVG to provide some `ofPath` which are converted to `BLPath` for rendering in Blend2D. Also has a GUI which lets you interactively change some parameters.
+- `example-svg` : A benchmarking and graphical comparison tool for comparing Blend2D rendering with native OpenFrameworks rendering. Also features saving a frame as PNG.
+
+# Contributions
+Contributions are welcome, don't hesitate to submit a PR or open an issue for talking about bugs or new features.
 
 # Future ideas
-- Implement as ofRenderer subclass (would need porting all `ofDraw...` functions to ofxBlend2D, but provide an easier integration with OF).
+- Implement as ofRenderer subclass (would need porting all `ofDraw...` functions to ofxBlend2D, it would provide an easier integration with OF).
 - Provide instructions for building libBlend2D as a library (*to prevent recompiling for every single project*).
 - Offline rendering outputting to files.
 
