@@ -34,6 +34,9 @@ Should work on Windows too, probably with some inclusion fixes.
 - Install `example-svg` dependencies: (*`example-simple` doesn't need any*)  
   - The optional dependencies (*above*)
   - [ofxSvgLoader](https://github.com/NickHardeman/ofxSvgLoader)
+- Install `example-compare` dependencies: 
+  - [ofxFPS](https://github.com/tobiasebsen/ofxFps)
+  - [ofxTimeMeasurements](https://github.com/armadillu/ofxTimeMeasurements)
 
 
 # Usage
