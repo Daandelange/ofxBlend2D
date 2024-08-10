@@ -3,9 +3,9 @@
 An OpenFrameworks addon integrating [libBlend2D](https://blend2d.com/), a blazing fast CPU 2D vector graphics renderer powered by a [JIT compiler](https://en.wikipedia.org/wiki/Just-in-time_compilation).
 
 **Features:**  
-- Library loaded as an embedded library with access to its C API and C++ objects.
-- A wrapper (`ofxBlend2DThreadedRenderer`) to use for asynchronous multithreaded rendering, keeping the framerate of your openFrameworks pipeline.
-- Can also be used synchronously (in blocking mode), at risk of reducing your `ofApp` framerate.
+- The library is loaded as an embedded library with access to its C API and C++ objects.
+- There's a wrapper (`ofxBlend2DThreadedRenderer`) to use for **asynchronous multithreaded rendering**, keeping the framerate of your openFrameworks pipeline.
+- It can also be used **synchronously** (in blocking mode), at risk of reducing your `ofApp` framerate.
 
 **Technically:**  
 - Draw commands are submitted by the main thread (a dedicated thread is also possible).
@@ -18,7 +18,8 @@ OpenFrameworks has its own renderer pipelines, why use a different one ?!?
 I can think of multiple use cases, but generally this should be thought of as an additional renderer rather than the main renderer.  
 Depending on your needs, ofxBlend2D can be faster to render than OpenFrameworks, for example when your draw commands exceed **real-time** rendering capabilities of your GPU. This is typically useful on computers with a **poor GPU** and a **good multithreaded CPU**, or submitting lots of real-time (2d) vector data.
 
-See example-compare for a performance test, by adapting the draw code to your usecase.
+See example-compare for a performance test, by adapting the draw code to your usecase.  
+A comparison of Blend2D performance vs other CPU renderers is available [on their homepage](https://blend2d.com/performance.html).
 
 # Compatibility
 Tested on MacOs + Linux, both of_v0.11.2 and of_v0.12.0, both c++14 and c++17.  

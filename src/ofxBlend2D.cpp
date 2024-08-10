@@ -306,6 +306,7 @@ void ofxBlend2DThreadedRenderer::threadedFunction(){
 #else
         pixelDataFromThread.send(imgData);
 #endif
+    }
 }
 
 bool ofxBlend2DThreadedRenderer::loadImageDataIntoTexture(const BLImageData* data){
