@@ -65,13 +65,23 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update(){
 
-    // Flush the Blend2D pipeline from update()
-    if(blend2d.update(false)){
-        // Track Blend2d new frame
-        blRendererFps.begin();
-        blRendererFps.end();
-    }
+    // Note: hasNewFrame is for not measuring the ±0 time when there's no new frame
+    if(useBlend2DForRendering && blend2d.hasNewFrame()){
+        TS_STOP_NIF("Blend2D/RendererDelay");
 
+        TS_START("Blend2D/UploadTexture(CPU)");
+        TSGL_START("Blend2D/UploadTexture(GPU)");
+
+        // Flush the Blend2D pipeline from update()
+        if(blend2d.update(false)){
+            // Track Blend2d new frame
+            blRendererFps.begin();
+            blRendererFps.end();
+        }
+
+        TSGL_STOP("Blend2D/UploadTexture(GPU)");
+        TS_STOP("Blend2D/UploadTexture(CPU)");
+    }
 }
 
 //--------------------------------------------------------------
@@ -89,6 +99,7 @@ void ofApp::draw(){
     if(useBlend2DForRendering){
 
         // Submit draw calls
+        bool didNewFrame = false;
         if(blend2d.begin()){
             // This scope will not be called every frame !
             TS_START("Blend2D/SubmitGeometry");
@@ -117,16 +128,18 @@ void ofApp::draw(){
             unsigned int frameNum = ofGetFrameNum();
 
             if(bSaveNextFrame){
-                blend2d.end(frameNum, ofToString("lastFrame_")+(useBlend2DForRendering?"blend2d.png":"openframeworks.png"));
+                blend2d.end(frameNum, "lastFrame_blend2d.png");
                 bSaveNextFrame = false;
             }
             else blend2d.end(frameNum);
 
             TS_STOP("Blend2D/SubmitGeometry");
+
+            didNewFrame = true;
         }
 
         // Draw Blend2D texture
-        TS_START("Blend2D/SubmitTexture");
+        TS_START("Blend2D/DrawTexture");
         TSGL_START("Blend2D/DrawTexture(GPU)");
 
         ofTexture& blTex = blend2d.getTexture();
@@ -142,7 +155,11 @@ void ofApp::draw(){
         }
 
         TSGL_STOP("Blend2D/DrawTexture(GPU)");
-        TS_STOP("Blend2D/SubmitTexture");
+        TS_STOP("Blend2D/DrawTexture");
+
+        if(didNewFrame){
+            TS_START_NIF("Blend2D/RendererDelay");
+        }
     }
 
     // - - - - - -
@@ -174,6 +191,13 @@ void ofApp::draw(){
         ofPopStyle();
 
         TSGL_STOP("OpenFrameworks/DrawGeometry(GPU)");
+
+        // Save OF frame
+        if(bSaveNextFrame){
+            // Todo: Move this to ofFbo to also save transparency.
+            ofSaveViewport("lastFrame_openframeworks.png");
+            bSaveNextFrame = false;
+        }
     }
 
     // Helper Grid

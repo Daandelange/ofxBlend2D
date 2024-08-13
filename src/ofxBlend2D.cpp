@@ -131,7 +131,7 @@ bool ofxBlend2DThreadedRenderer::end(unsigned int frameNum, std::string frameFil
     return true;
 }
 
-// Returns true if  frame was received
+// Returns true if frame was received
 bool ofxBlend2DThreadedRenderer::update(const bool waitForThread, const bool noFrameSkipping){
     assert(!isSubmittingDrawCmds);
 
@@ -184,6 +184,14 @@ bool ofxBlend2DThreadedRenderer::update(const bool waitForThread, const bool noF
         else std::cout << ofGetFrameNum() << "f__ "  << "Update() : Skipping, no new frame received yet." << " dirty=" << bIsDirty << std::endl;
 #endif
         return newFrame;
+    }
+    return false;
+}
+
+// Returns true if frame is available (at time of call)
+bool ofxBlend2DThreadedRenderer::hasNewFrame(){
+    if(bIsDirty){
+        return !pixelDataFromThread.empty();
     }
     return false;
 }
@@ -446,7 +454,7 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
     ImGui::SeparatorText("Performance");
 
     ImGui::PlotHistogram("##blend2d_fps_histogram", &getFpsHist(), ofxBlend2D_FPS_HISTORY_SIZE, 0, NULL, 0.f, 75.f, ImVec2(0,30));
-    pauseHistogram = ImGui::IsKeyDown(ImGuiKey_ModShift) && ImGui::IsItemHovered();
+    pauseHistogram = ImGui::IsKeyDown(ImGuiMod_Shift) && ImGui::IsItemHovered();
 
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {2,0});
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {2, 0});

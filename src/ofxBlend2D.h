@@ -52,6 +52,7 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         bool begin();
         bool end(unsigned int frameNum, std::string frameFileToSave="");
         bool update(const bool waitForThread=false, const bool noFrameSkipping=false);
+        bool hasNewFrame();
 
         BLContext& getBlContext();
         std::string getContextErrors();
