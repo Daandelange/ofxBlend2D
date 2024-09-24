@@ -48,10 +48,13 @@ Some OpenFrameworks / Blend2D glue utilities are being written, any contribution
 
 Please note that Blend2d runs on a JIT interpreter and performance varies a lot between Debug and Release builds due to their respective exported debug symbols and compile-time optimisations. For performance, prefer Release builds.
 
+# Configure
+- ofxImGui compatibility: Optionally define `ofxBlend2D_ENABLE_IMGUI` (or `ofxAddons_ENABLE_IMGUI`) to enable some [ofxImGui](https://github.com/jvcleave/ofxImGui/) helpers like `ofxBlend2DInstance.drawImGuiSettings()`.
+
 # Examples
 - `example-simple` : A bare-bones example of how to use the C++ Blend2D API, pretty similar to the Blend2D "getting started" examples.
-- `example-svg` : Loads an SVG to provide some `ofPath` which are converted to `BLPath` for rendering in Blend2D. Also has a GUI which lets you interactively change some parameters.
-- `example-svg` : A benchmarking and graphical comparison tool for comparing Blend2D rendering with native OpenFrameworks rendering. Also features saving a frame as PNG.
+- `example-svg` : Loads an SVG to provide some `ofPath` which are converted to `BLPath` for rendering in Blend2D. Also demonstrates the ofxImGui integration which lets you interactively change some settings.
+- `example-compare` : A benchmarking and graphical comparison tool for comparing Blend2D rendering with native OpenFrameworks rendering. Also features saving a frame as PNG.
 
 # Contributions
 Contributions are welcome, don't hesitate to submit a PR or open an issue for talking about bugs or new features.

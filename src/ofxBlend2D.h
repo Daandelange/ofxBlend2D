@@ -33,6 +33,12 @@
 // Enable very verbose threading debug messages
 //#define ofxBlend2D_DEBUG
 
+// Compatibility with the ofxImGui global ofxAddon imgui enabler
+#ifdef ofxAddons_ENABLE_IMGUI
+#ifndef ofxBlend2D_ENABLE_IMGUI
+#define ofxBlend2D_ENABLE_IMGUI
+#endif
+#endif
 
 #ifdef ofxBlend2D_ENABLE_OFXFPS
 #   include "ofxFps.h"
