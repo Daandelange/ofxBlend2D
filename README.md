@@ -22,7 +22,8 @@ See example-compare for a performance test, by adapting the draw code to your us
 A comparison of Blend2D performance vs other CPU renderers is available [on their homepage](https://blend2d.com/performance.html).
 
 # Compatibility
-Tested on MacOs + Linux, both of_v0.11.2 and of_v0.12.0, both c++14 and c++17.  
+Tested on MacOs + Linux, both of_v0.11.2 and of_v0.12.0. (C++17 is required.)  
+For C++14 you can downgrade libBlend2D to v0.11.5 or use commit 49af45713a5574203b122f8c1c24064f263ac64c.  
 Should work on Windows too, probably with some inclusion fixes.
 
 # Installation
