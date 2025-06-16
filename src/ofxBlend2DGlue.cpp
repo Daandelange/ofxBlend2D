@@ -6,7 +6,7 @@
 
 // OF Glue
 // - - - -
-inline BLPath toBLPath(ofPath const& _p){
+BLPath toBLPath(ofPath const& _p){
     if(_p.getMode()!=ofPath::Mode::COMMANDS){
         ofLogWarning("ofxBlend2D::toBLPath") << "The path is not in CMD mode, returning an empty BLPath !";
     }

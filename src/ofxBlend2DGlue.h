@@ -23,7 +23,7 @@ inline constexpr BLPoint toBLPoint(glm::vec3 const& _p){
     return BLPoint(_p.x, _p.y);
 }
 
-inline BLPath toBLPath(ofPath const& _p);
+BLPath toBLPath(ofPath const& _p);
 
 // Utility for making errors human-readable
 std::string blResultToString(BLResult r);
