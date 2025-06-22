@@ -52,7 +52,7 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         ~ofxBlend2DThreadedRenderer();
 
         // Sets the size
-        void allocate(int _width, int _height, int glPixelType=0);
+        void allocate(int _width, int _height, int glPixelType=GL_RGBA);
 
         // Start submitting draw commands to context
         bool begin();

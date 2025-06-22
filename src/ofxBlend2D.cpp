@@ -75,7 +75,7 @@ void ofxBlend2DThreadedRenderer::allocate(int _width, int _height, int glPixelTy
         default:
             // By default, set blend2d to full RGBA buffer
             blInternalFormat = BLFormat::BL_FORMAT_PRGB32;
-            ofLogWarning("ofxBlend2DThreadedRenderer::allocate") << "Unsupported pixel type, using the default BMP32 with alpha.";
+            ofLogError("ofxBlend2DThreadedRenderer::allocate") << "Unsupported pixel type, using the default BMP32 with alpha.";
     }
 }
 
