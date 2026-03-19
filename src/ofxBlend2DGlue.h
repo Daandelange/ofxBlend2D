@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blend2d.h"
+#include "blend2d/blend2d.h"
 
 // OF Types
 #include "ofMath.h"

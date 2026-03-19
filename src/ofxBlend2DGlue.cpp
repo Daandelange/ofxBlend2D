@@ -17,17 +17,17 @@ BLPath toBLPath(ofPath const& _p){
         switch(cmd.type){
             case ofPath::Command::Type::moveTo:
                 // First point of a shape
-                ret.moveTo( toBLPoint(cmd.to) );
+                ret.move_to( toBLPoint(cmd.to) );
                     break;
             case ofPath::Command::Type::lineTo:
-                ret.lineTo(toBLPoint(cmd.to));
+                ret.line_to(toBLPoint(cmd.to));
                     break;
             case ofPath::Command::Type::curveTo:
-                ret.lineTo(toBLPoint(cmd.to)); // todo ! (uses a line instead of an arc)
+                ret.line_to(toBLPoint(cmd.to)); // todo ! (uses a line instead of an arc)
                 warnUnsupportedCmd = true;
                     break;
             case ofPath::Command::Type::bezierTo:
-                ret.cubicTo(toBLPoint(cmd.cp1), toBLPoint(cmd.cp2), toBLPoint(cmd.to));
+                ret.cubic_to(toBLPoint(cmd.cp1), toBLPoint(cmd.cp2), toBLPoint(cmd.to));
                     break;
             case ofPath::Command::Type::quadBezierTo:
                 warnUnsupportedCmd = true;

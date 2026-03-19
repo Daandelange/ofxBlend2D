@@ -1,6 +1,6 @@
 #pragma once
 
-#include "blend2d.h"
+#include "blend2d/blend2d.h"
 #include "ofxBlend2DGlue.h"
 #include "ofTexture.h"
 #include "ofFileUtils.h" // ofBuffer
@@ -74,7 +74,7 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         }
 
         void setNumThreads(const int numThreads){
-            createInfo.threadCount = numThreads;
+            createInfo.thread_count = numThreads;
         }
 
 #ifdef ofxBlend2D_ENABLE_OFXFPS

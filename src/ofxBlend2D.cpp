@@ -13,10 +13,11 @@
 #endif
 
 ofxBlend2DThreadedRenderer::ofxBlend2DThreadedRenderer(){
-    createInfo.threadCount = 4; // Number of threads
+
+    createInfo.thread_count = 4; // Number of threads
     //createInfo.flags =
 
-    codec.findByName("BMP"); // Sets codec to BMP
+    codec.find_by_name("BMP"); // Sets codec to BMP
 
     allocate(ofGetWidth(), ofGetHeight());
 
@@ -109,10 +110,10 @@ bool ofxBlend2DThreadedRenderer::begin(){
     isSubmittingDrawCmds = true;
 
     // Init context
-    ctx.setRenderingQuality(bRenderHD ? BLRenderingQuality::BL_RENDERING_QUALITY_ANTIALIAS : BLRenderingQuality::BL_RENDERING_QUALITY_ANTIALIAS); // No effect as on jan 2024, will auto-enable ? (both consts are equal)
+    ctx.set_rendering_quality(bRenderHD ? BLRenderingQuality::BL_RENDERING_QUALITY_ANTIALIAS : BLRenderingQuality::BL_RENDERING_QUALITY_ANTIALIAS); // No effect as on jan 2024, will auto-enable ? (both consts are equal)
     // Todo: make this optional ?
-    ctx.clearAll();
-    ctx.fillAll(BLRgba32(255,255,255,0));
+    ctx.clear_all();
+    ctx.fill_all(BLRgba32(255,255,255,0));
 
     return true;
 }
@@ -202,7 +203,7 @@ BLContext& ofxBlend2DThreadedRenderer::getBlContext(){
 }
 
 std::string ofxBlend2DThreadedRenderer::getContextErrors(){
-    BLContextErrorFlags errorFlags = ctx.accumulatedErrorFlags();
+    BLContextErrorFlags errorFlags = ctx.accumulated_error_flags();
     std::ostringstream ret;
     ret << "Context_Error_Flags=" << errorFlags << " (";
 
@@ -284,7 +285,7 @@ void ofxBlend2DThreadedRenderer::threadedFunction(){
         // Grab the result
         BLArray<uint8_t> resultData;
         BLImageData imgData;
-        BLResult resultDataGet = img.getData(&imgData);
+        BLResult resultDataGet = img.get_data(&imgData);
         if(resultDataGet != BL_SUCCESS){
             ofLogWarning("ofxBlend2DThreadedRenderer") << "Couldn't load texture! Error=" << resultDataGet << "(" << blResultToString(resultDataGet) << ") and ContextError=" << getContextErrors();
             return;
@@ -300,7 +301,7 @@ void ofxBlend2DThreadedRenderer::threadedFunction(){
 
             // Build pixels object
             ofPixels pixels;
-            pixels.setFromAlignedPixels((const unsigned char*)imgData.pixelData, imgData.size.w, imgData.size.h, ofxBlend2DGetOfPixelFormatFromGLFormat(glFormat), imgData.stride);
+            pixels.setFromAlignedPixels((const unsigned char*)imgData.pixel_data, imgData.size.w, imgData.size.h, ofxBlend2DGetOfPixelFormatFromGLFormat(glFormat), imgData.stride);
 
             // Save the data !
             if(!ofSaveImage(pixels, ofToDataPath(frameData.fileToSave), OF_IMAGE_QUALITY_BEST)){
@@ -344,7 +345,7 @@ bool ofxBlend2DThreadedRenderer::loadImageDataIntoTexture(const BLImageData* dat
 
     // Load the pixel data into the texture
     glPixelStorei(GL_UNPACK_ROW_LENGTH, data->stride/numChannels); // Allow stride within data
-    tex.loadData((const void*)data->pixelData, data->size.w, data->size.h, glFormat, ofGetGLTypeFromInternal(glFormat)); // GL_UNSIGNED_BYTE
+    tex.loadData((const void*)data->pixel_data, data->size.w, data->size.h, glFormat, ofGetGLTypeFromInternal(glFormat)); // GL_UNSIGNED_BYTE
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0); // resets GL value
     return true;
 }
@@ -412,9 +413,9 @@ void ofxBlend2DThreadedRenderer::drawImGuiSettings(){
     }
 
     static unsigned int numThreads[4] = { 0, 1, 0, 12 }; // cur, speed, min, max
-    numThreads[0] = createInfo.threadCount;
+    numThreads[0] = createInfo.thread_count;
     if(ImGui::DragScalar("Num threads", ImGuiDataType_U32, (void*)&numThreads[0], numThreads[1], &numThreads[2], &numThreads[3], "%u" )){
-        createInfo.threadCount = numThreads[0];
+        createInfo.thread_count = numThreads[0];
     }
     ImGui::Checkbox("High quality rendering", &bRenderHD);
 
@@ -707,23 +708,23 @@ namespace ImGuiEx {
             ImGui::SeparatorText(label);
 
         // Curve flatten mode
-        if(ImGuiEx::Blend2DFlattenMode(approxOptions.flattenMode))
+        if(ImGuiEx::Blend2DFlattenMode(approxOptions.flatten_mode))
             anyChanged |= true;
 
         // Flatten tolerance
-        if(ImGuiEx::Blend2DFlattenTolerance(approxOptions.flattenTolerance))
+        if(ImGuiEx::Blend2DFlattenTolerance(approxOptions.flatten_tolerance))
             anyChanged |= true;
 
         // Offset Mode
-        if(ImGuiEx::Blend2DOffsetMode(approxOptions.offsetMode))
+        if(ImGuiEx::Blend2DOffsetMode(approxOptions.offset_mode))
             anyChanged |= true;
 
         // Offset param
-        if(ImGuiEx::Blend2DOffsetParam(approxOptions.offsetParameter))
+        if(ImGuiEx::Blend2DOffsetParam(approxOptions.offset_parameter))
             anyChanged |= true;
 
         // Simplify Tolerance
-        if(ImGuiEx::Blend2DSimplifyTolerance(approxOptions.simplifyTolerance))
+        if(ImGuiEx::Blend2DSimplifyTolerance(approxOptions.simplify_tolerance))
             anyChanged |= true;
 
         return anyChanged;
@@ -732,58 +733,58 @@ namespace ImGuiEx {
     void Blend2DContextInfo(BLContext& ctx){
 
         ImGui::SeparatorText("Rendering");
-        BLRenderingQuality rq = ctx.renderingQuality();
+        BLRenderingQuality rq = ctx.rendering_quality();
         if(ImGuiEx::Blend2DRenderingQuality(rq)){
-            ctx.setRenderingQuality(rq);
+            ctx.set_rendering_quality(rq);
         }
 
-        BLPatternQuality pq = ctx.patternQuality();
+        BLPatternQuality pq = ctx.pattern_quality();
         if(ImGuiEx::Blend2DPatternQuality(pq)){
-            ctx.setPatternQuality(pq);
+            ctx.set_pattern_quality(pq);
         }
 
-        BLGradientQuality gq = ctx.gradientQuality();
+        BLGradientQuality gq = ctx.gradient_quality();
         if(ImGuiEx::Blend2DGradientQuality(gq)){
-            ctx.setGradientQuality(gq);
+            ctx.set_gradient_quality(gq);
         }
 
         ImGui::SeparatorText("Geometry");
 
-        int curFillRule = ctx.fillRule();
+        int curFillRule = ctx.fill_rule();
         if(ImGui::Combo("Fill Rule", &curFillRule, fillModes, IM_ARRAYSIZE(fillModes))){
-            ctx.setFillRule((BLFillRule)curFillRule);
+            ctx.set_fill_rule((BLFillRule)curFillRule);
         }
 
         // composition operator
-        BLCompOp blendingMode = ctx.compOp();
+        BLCompOp blendingMode = ctx.comp_op();
         if(ImGuiEx::Blend2DCompOp(blendingMode, "Blending Mode")){
-            ctx.setCompOp(blendingMode);
+            ctx.set_comp_op(blendingMode);
         }
 
         // Curve flatten mode
-        BLFlattenMode flattenMode = ctx.flattenMode();
+        BLFlattenMode flattenMode = ctx.flatten_mode();
         if(ImGuiEx::Blend2DFlattenMode(flattenMode)){
-            ctx.setFlattenMode(flattenMode);
+            ctx.set_flatten_mode(flattenMode);
         }
 
         // Flatten tolerance
-        double flattenTolerance = ctx.flattenTolerance();
+        double flattenTolerance = ctx.flatten_tolerance();
         if(ImGuiEx::Blend2DFlattenTolerance(flattenTolerance)){
-            ctx.setFlattenTolerance(flattenTolerance);
+            ctx.set_flatten_tolerance(flattenTolerance);
         }
 
         ImGui::SeparatorText("Styles");
 
         // global alpha value
-        double globalAlpha = ctx.globalAlpha();
+        double globalAlpha = ctx.global_alpha();
         if(ImGuiEx::Blend2DGlobalAlpha(globalAlpha)){
-            ctx.setGlobalAlpha(globalAlpha);
+            ctx.set_global_alpha(globalAlpha);
         }
 
         // Fill alpha value
-        double fillAlpha = ctx.fillAlpha();
+        double fillAlpha = ctx.fill_alpha();
         if(ImGuiEx::Blend2DFillAlpha(fillAlpha)){
-            ctx.setFillAlpha(fillAlpha);
+            ctx.set_fill_alpha(fillAlpha);
         }
 
     }
