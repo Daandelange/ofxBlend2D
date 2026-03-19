@@ -40,11 +40,11 @@ void ofApp::setup(){
     ofVec2f h4o(p4.x-shapeSize*.0, p4.y-shapeSize*.3);
 
     // Load shapes in memory
-    blShape.moveTo(p1.x, p1.y);
-    blShape.cubicTo(h1o.x, h1o.y, h2i.x, h2i.y, p2.x, p2.y);
-    blShape.cubicTo(h2o.x, h2o.y, h3i.x, h3i.y, p3.x, p3.y);
-    blShape.cubicTo(h3o.x, h3o.y, h4i.x, h4i.y, p4.x, p4.y);
-    blShape.cubicTo(h4o.x, h4o.y, h1i.x, h1i.y, p1.x, p1.y);
+    blShape.move_to(p1.x, p1.y);
+    blShape.cubic_to(h1o.x, h1o.y, h2i.x, h2i.y, p2.x, p2.y);
+    blShape.cubic_to(h2o.x, h2o.y, h3i.x, h3i.y, p3.x, p3.y);
+    blShape.cubic_to(h3o.x, h3o.y, h4i.x, h4i.y, p4.x, p4.y);
+    blShape.cubic_to(h4o.x, h4o.y, h1i.x, h1i.y, p1.x, p1.y);
     blShape.close();
 
     ofShape.setFilled(true);
@@ -107,7 +107,7 @@ void ofApp::draw(){
             // - - - - - -
             // Get the context
             BLContext ctx = blend2d.getBlContext();
-            ctx.setCompOp(BL_COMP_OP_SRC_OVER); // match OF's comp mode
+            ctx.set_comp_op(BL_COMP_OP_SRC_OVER); // match OF's comp mode
             auto blColor = toBLColor(ofFloatColor((const ofColor) shapeColor));
             // Draw shapes
             for(unsigned int posY=0; posY<rows; posY+=1){
@@ -120,7 +120,7 @@ void ofApp::draw(){
 
                     // Draw the shape !
                     if(doAnimate) ctx.rotate(loopProgress*TWO_PI);
-                    ctx.fillPath(blShape, blColor);
+                    ctx.fill_path(blShape, blColor);
                     if(doAnimate) ctx.rotate(loopProgress*TWO_PI*-1);
                 }
             }

@@ -41,14 +41,14 @@ void ofApp::draw(){
 
             if(!style.isVisible) return;
 
-            if(!blPath.empty()){
+            if(!blPath.is_empty()){
                 if(style.isFilled){
-                    ctx.fillPath(blPath, toBLColor(style.fillColor));
+                    ctx.fill_path(blPath, toBLColor(style.fillColor));
                 }
 
                 if(style.isStroked()){
-                    ctx.setStrokeWidth(style.strokeWidth);
-                    ctx.strokePath(blPath, toBLColor(style.strokeColor));
+                    ctx.set_stroke_width(style.strokeWidth);
+                    ctx.stroke_path(blPath, toBLColor(style.strokeColor));
                 }
             }
         }
@@ -65,9 +65,9 @@ void ofApp::draw(){
         for(auto& shapeInfo : paths){
             BLPath& blPath = shapeInfo.first;
             ofPathStyle& style = shapeInfo.second;
-            if(!blPath.empty()){
+            if(!blPath.is_empty()){
                 BLBox bbox;
-                BLResult result = blPath.getBoundingBox(&bbox);
+                BLResult result = blPath.get_bounding_box(&bbox);
                 if(result!=BL_SUCCESS){
                     // ignore
                 }
