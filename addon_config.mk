@@ -6,6 +6,8 @@ meta:
 	ADDON_URL = https://github.com/daandelange/ofxBlend2D
 
 common:
+	ADDON_DATA += data/fonts
+
 	#ADDON_DEPENDENCIES = ofxFps
 
 	# Reference : https://blend2d.com/doc/build-instructions.html#BuildingWithoutCMake

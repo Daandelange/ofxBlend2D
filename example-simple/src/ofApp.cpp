@@ -22,9 +22,11 @@ void ofApp::draw(){
     // Data : p=point, h=handle (bezier)
     float variation = sin(ofGetElapsedTimef()*.5)*.5+.5;
     const glm::vec2 linePos(400, 40+variation*400);
+    // Shape points
     const static glm::vec2 p1(119, 49);
     const static glm::vec2 p2(275, 267);
     const static glm::vec2 p3(274, 430);
+    // Shape handles
     const static glm::vec2 h1(259, 29);
     const static glm::vec2 h2(99, 279);
     const static glm::vec2 h3(537, 245);

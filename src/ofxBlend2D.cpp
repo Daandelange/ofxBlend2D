@@ -12,6 +12,43 @@
 #   include "ofxImGui.h"
 #endif
 
+#ifndef ofxBlend2D_DISABLE_DEFAULT_FONT
+namespace ofxBlend2D {
+    const BLFont& GetDefaultFont() {
+        static BLFont defaultFont;
+        static BLFontFace defaultFontFace;
+        static bool bDefaultFontLoaded = false;
+        static bool bLogged = false;
+        if(!bDefaultFontLoaded){
+            BLResult faceResult = defaultFontFace.create_from_file(ofToDataPath("fonts/gohufont-14.ttf").c_str());
+            if (faceResult != BL_SUCCESS) {
+                defaultFontFace = {}; // reset
+                if(!bLogged){
+                    ofLogError("ofxBlend2DThreadedRenderer::getDefaultFont") << "Failed to load the font face (err=" << faceResult << ")";
+                    bLogged = true;
+                }
+                return defaultFont;
+            }
+            BLResult fontResult = defaultFont.create_from_face(defaultFontFace, 14.5f);
+            if (fontResult != BL_SUCCESS) {
+                defaultFontFace = {}; // reset
+                defaultFont = {};
+                if(!bLogged){
+                    ofLogError("ofxBlend2DThreadedRenderer::getDefaultFont") << "Failed to load the font (err=" << fontResult << ")";
+                    bLogged = true;
+                }
+                return defaultFont;
+            }
+
+            ofLogVerbose("ofxBlend2DThreadedRenderer::getDefaultFont") << "Successfully loaded the font ! :)";
+            bLogged = true;
+            bDefaultFontLoaded = true;
+        }
+        return defaultFont;
+    } // getDefaultFont()
+}
+#endif
+
 ofxBlend2DThreadedRenderer::ofxBlend2DThreadedRenderer(){
 
     createInfo.thread_count = 4; // Number of threads

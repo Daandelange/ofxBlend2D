@@ -44,6 +44,16 @@
 #   include "ofxFps.h"
 #endif
 
+#ifdef ofxBlend2D_ENABLE_OFXSVGLOADER
+//#   include "ofxSvgBase.h"
+#endif
+
+#ifndef ofxBlend2D_DISABLE_DEFAULT_FONT
+namespace ofxBlend2D {
+    // Helper that provides an always-available default font
+    const BLFont& GetDefaultFont();
+}
+#endif
 
 class ofxBlend2DThreadedRenderer : protected ofThread {
 
