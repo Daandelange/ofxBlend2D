@@ -159,7 +159,7 @@ class ofxBlend2DThreadedRenderer : protected ofThread {
         // Protected as channels
         BLContext ctx; // Canvas context
         BLImage img; // Canvas
-        BLImageCodec codec;
+        //BLImageCodec codec;
 
         // OF Objects
         ofTexture tex; //

@@ -54,7 +54,7 @@ ofxBlend2DThreadedRenderer::ofxBlend2DThreadedRenderer(){
     createInfo.thread_count = 4; // Number of threads
     //createInfo.flags =
 
-    codec.find_by_name("BMP"); // Sets codec to BMP
+    //codec.find_by_name("BMP"); // Sets codec to BMP
 
     allocate(ofGetWidth(), ofGetHeight());
 
