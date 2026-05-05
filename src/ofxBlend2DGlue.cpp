@@ -357,3 +357,24 @@ ofPixelFormat ofxBlend2DGetOfPixelFormatFromGLFormat(const GLint glFormat){
             return OF_PIXELS_GRAY;
     }
 }
+
+const char* blCmdToStr(const uint8_t*const cmd){
+   if(cmd==nullptr || *cmd>BL_PATH_CMD_MAX_VALUE) return "unknown";
+   switch(*cmd){
+      case BL_PATH_CMD_MOVE :
+         return "MOVE";
+      case BL_PATH_CMD_ON :
+         return "ON"; // aka line-to
+      case BL_PATH_CMD_QUAD :
+         return "QUAD";
+      case BL_PATH_CMD_CONIC :
+         return "CONIC";
+      case BL_PATH_CMD_CUBIC :
+         return "CUBIC";
+      case BL_PATH_CMD_CLOSE :
+         return "CLOSE";
+      case BL_PATH_CMD_WEIGHT :
+         return "WEIGHT";
+   }
+   return "unknown";
+}

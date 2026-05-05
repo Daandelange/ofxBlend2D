@@ -34,3 +34,6 @@ GLint blFormatToGlFormat(uint16_t blFormat);
 // Missing in ofGLUtils : the reverse of ofGetGLFormatFromPixelFormat
 // Note: lossy conversion, some glFormats have multiple corresponding ofFormats
 ofPixelFormat ofxBlend2DGetOfPixelFormatFromGLFormat(const GLint glFormat);
+
+// Util for printing human readable data
+const char* blCmdToStr(const uint8_t*const cmd);

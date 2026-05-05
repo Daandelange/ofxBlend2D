@@ -299,7 +299,7 @@ void ofxBlend2DThreadedRenderer::threadedFunction(){
 
     bool newFrame = false;
     ofxBlend2DThreadedRendererData frameData;
-    BLArray<uint8_t> pixelDataInThread;
+    //BLArray<uint8_t> pixelDataInThread;
 
     while(flushFrameSignal.receive(frameData)){
 #ifdef ofxBlend2D_DEBUG
