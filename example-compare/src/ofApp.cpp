@@ -148,10 +148,12 @@ void ofApp::draw(){
             ofSetColor(ofColor::white);
             // because Blend2D pre-multiplies alpha !
             // See: https://apoorvaj.io/alpha-compositing-opengl-blending-and-premultiplied-alpha/
-            glBlendEquation(GL_FUNC_ADD);
-            glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            //glBlendEquation(GL_FUNC_ADD);
+            //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+            enableBlend2dGlBlending();
             blTex.draw(0,0);
-            ofEnableBlendMode(OF_BLENDMODE_ALPHA); // reset blend mode. fixme: what if user changed default blend mode ???
+            //ofEnableBlendMode(OF_BLENDMODE_ALPHA); // reset blend mode. fixme: what if user changed default blend mode ???
+            disableBlend2dGlBlending();
         }
 
         TSGL_STOP("Blend2D/DrawTexture(GPU)");

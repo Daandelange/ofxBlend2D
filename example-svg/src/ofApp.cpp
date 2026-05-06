@@ -23,7 +23,9 @@ void ofApp::draw(){
     if(blTex.isAllocated()){
         ofFill();
         ofSetColor(ofColor::white);
+        enableBlend2dGlBlending();
         blTex.draw(0,0);
+        disableBlend2dGlBlending();
     }
 
     // Submit to the blend2d pipeline

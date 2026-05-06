@@ -378,3 +378,37 @@ const char* blCmdToStr(const uint8_t*const cmd){
    }
    return "unknown";
 }
+
+struct GlBlendState {
+    bool isValid=false;
+    GLboolean blendEnabled;// = glIsEnabled(GL_BLEND);
+    GLint srcRGB, dstRGB, srcAlpha, dstAlpha;
+
+    // Call from Gl context only !
+    GlBlendState(const bool isGlEnabled=false) : isValid(isGlEnabled){
+        if(!isGlEnabled) return;
+        blendEnabled = glIsEnabled(GL_BLEND);
+        glGetIntegerv(GL_BLEND_SRC_RGB, &srcRGB);
+        glGetIntegerv(GL_BLEND_DST_RGB, &dstRGB);
+        glGetIntegerv(GL_BLEND_SRC_ALPHA, &srcAlpha);
+        glGetIntegerv(GL_BLEND_DST_ALPHA, &dstAlpha);
+    }
+
+} prevBlendState;
+
+// Prepares gl blending state for blend2d's pre-multiplied alpha textures
+void enableBlend2dGlBlending(){
+    prevBlendState = {true};
+    if(!prevBlendState.blendEnabled){
+        glEnable(GL_BLEND);
+    }
+    glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+}
+// Restores previous blending mode
+void disableBlend2dGlBlending(){
+    if(!prevBlendState.isValid) return; // prevent restoring garbage
+    if(!prevBlendState.blendEnabled){
+        glDisable(GL_BLEND);
+    }
+    glBlendFuncSeparate(prevBlendState.srcRGB, prevBlendState.dstRGB, prevBlendState.srcAlpha, prevBlendState.dstAlpha);
+}
