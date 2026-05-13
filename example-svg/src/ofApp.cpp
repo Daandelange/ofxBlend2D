@@ -35,8 +35,17 @@ void ofApp::draw(){
         // - - - - - -
         // Get the context
         BLContext ctx = blend2d.getBlContext();
+
+        // Context locking
+        ctx.scale(1); // here you can eventually handle retina or other dpi stuff
+        ctx.user_to_meta(); // Saves current "user transform" as "meta transform" (the global immutable one)
+
+        // Save current state
+        ctx.save(); // Combination of OF alternatives: ofPushMatrix & ofPushStyle()
+
         ctx.translate(20, 40); // Leave place for menu and padding
 
+        // Draw loaded paths
         for(auto& shapeInfo : paths){
             BLPath& blPath = shapeInfo.first;
             ofPathStyle& style = shapeInfo.second;
@@ -54,7 +63,22 @@ void ofApp::draw(){
                 }
             }
         }
+
+        // Restore the context state (like: ofPopMatrix & ofPopStyle)
+        ctx.restore();
+
+        // to force the transform context to the "meta context":
+        // ctx.reset_transform();
+
+        // Here we can draw normally, independently of any previous ctx changes above
+
+        // Draw blend2D text
         unsigned int frameNum = ofGetFrameNum();
+        std::string str = std::string("#") + std::to_string(frameNum);
+        ctx.fill_utf8_text(BLPoint(ofGetWidth()-50, 40), ofxBlend2D::GetDefaultFont(), str.c_str(), str.length(), toBLColor(ofFloatColor(1,1,1,1)));
+        ctx.fill_utf8_text(BLPoint(50, 40), ofxBlend2D::GetDefaultFont(), str.c_str(), str.length(), toBLColor(ofFloatColor(1,1,1,1)));
+
+        // End the frame, providing a frame number not to accidentally retrieve an older frame
         blend2d.end(frameNum);
     }
 
